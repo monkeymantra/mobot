@@ -190,12 +190,7 @@ class ProductGroup(Trackable):
     name = models.TextField(help_text="A group of products offered together as a single product which may come in different descriptions/sizes")
 
 
-class ProductManager(models.Manager):
 
-    def add_to_cart(self, customer: Customer, product_id: str):
-        self.model.objects.filter(id=product_id).
-
-    def add
 
 class Product(Trackable):
     store_ref = models.ForeignKey(MCStore, on_delete=models.CASCADE)
@@ -207,7 +202,7 @@ class Product(Trackable):
     allows_refund = models.BooleanField(default=True, blank=False, null=False)
     price = MoneyField(max_digits=14, decimal_places=5, default_currency='GBP', help_text='Price of the product',
                        blank=False, default=1.0)
-    objects = ProductManager()
+    objects = models.Manager()
 
     class Meta:
         app_label = 'merchant_services'
