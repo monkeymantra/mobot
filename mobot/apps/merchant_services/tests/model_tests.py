@@ -10,7 +10,7 @@ from django.utils import timezone as tz
 from dataclasses import dataclass
 import django
 django.setup()
-from mobot.apps.merchant_services.models import Customer, MCStore, Merchant, Product, InventoryItem, Campaign, Validation, ProductGroup
+from mobot.apps.merchant_services.models import Customer, MCStore, Merchant, Product, InventoryItem, Campaign, Validation, ProductGroup, Order
 
 
 @dataclass
@@ -116,6 +116,12 @@ class CustomerTestCase(TestCase):
         inv = product.add_inventory(20)
         return inv
 
+    def _set_up_small_hoodie(self, inventory_count: int=10):
+        hoodie = self._add_hoodie(size="medium")
+        hoodie.add_inventory(inventory_count)
+        order = Order(item = )
+
+
     def setUp(self):
         self.merchant = self.add_default_merchant()
         self.store = self.add_default_store(self.merchant)
@@ -143,12 +149,20 @@ class CustomerTestCase(TestCase):
 
     def test_can_create_hoodie_and_inventory(self):
         small_hoodie = self._add_hoodie(size="small")
-        small_hoodie.add_inventory(10)
+        small_hoodie.add_inventory(2)
+        small_hoodie.add_inventory(7)
+        self.assertEqual(small_hoodie.inventory.count(), 9)
+
         medium_hoodie = self._add_hoodie(size="medium")
+        medium_hoodie.add_inventory(5)
         medium_hoodie.add_inventory(10)
+        self.assertEqual(medium_hoodie.inventory.count(), 15)
+
         large_hoodie = self._add_hoodie(size="large")
         large_hoodie.add_inventory(10)
-        print(large_hoodie.inventory.count())
+        self.assertEqual(large_hoodie.inventory.count(), 10)
+
+    def test_can_create_order
 
 
     # def test_can_add_has_inventory(self):

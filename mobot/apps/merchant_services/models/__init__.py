@@ -252,11 +252,16 @@ class InventoryItem(Trackable):
     description = models.TextField(help_text="Specifics on this inventory item")
 
     @transition(state, source=InventoryState.AVAILABLE, target=InventoryState.IN_CART)
-    def add_to_cart(self, cart: Cart, expires_after: int = 3600):
-        cart_item = CartItem.objects.create(cart=cart, expires_after=expires_after)
+    def add_to_customer_cart(self, customer: Customer):
+        cart_item = Order.objects.create_order(item=self, customer=customer)
         self.cart_item = cart_item
         self.save()
 
+
+class OrderManager(models.Manager):
+
+    def create_order(self, item: InventoryItem, customer: Customer):
+        self.create(item=item, customer=customer, price=item.product_ref.price)
 
 
 class Order(Trackable):
@@ -273,7 +278,9 @@ class Order(Trackable):
     customer = models.ForeignKey(Customer, on_delete=models.DO_NOTHING, blank=False, null=False, db_index=True)
     price = MoneyField(blank=False, null=False, max_digits=14, decimal_places=5)
     state = FSMIntegerField(choices=State.choices, default=State.STATUS_NEW, protected=True)
-    shipment = models.OneToOneField(Shipment, related_name="sale", on_delete=models.CASCADE)
+    expiration = models.DateTimeField()
+    shipment = models.OneToOneField(Shipment, related_name="shipment", on_delete=models.CASCADE, blank=True, null=True)
+    objects = OrderManager()
 
     @transition(state, source=[State.STATUS_NEW, State.STATUS_PAYMENT_REQUESTED], target=State.STATUS_PAYMENT_RECEIVED)
     def pay(self, amount: Money):
