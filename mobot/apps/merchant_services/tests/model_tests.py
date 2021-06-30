@@ -116,17 +116,15 @@ class CustomerTestCase(TestCase):
         inv = product.add_inventory(20)
         return inv
 
-    def _set_up_small_hoodie(self, inventory_count: int=10):
-        hoodie = self._add_hoodie(size="medium")
-        hoodie.add_inventory(inventory_count)
-        order = Order(item = )
+    def _add_hoodie_to_customer(self, product: Product, customer: Customer) -> Order:
+        return Product.add_to_cart(customer)
 
 
     def setUp(self):
         self.merchant = self.add_default_merchant()
         self.store = self.add_default_store(self.merchant)
         self.cust_us = self.add_default_customer("Greg", phone_number="+18054412653")
-        self.cust_us_2 = self.add_default_customer("Bpb", phone_number="+4474413397")
+        self.cust_uk_2 = self.add_default_customer("Bpb", phone_number="+447441433907")
         self.cust_uk = self.add_default_customer("Adam", phone_number="+447441433906")
         self.original_drop = self.add_default_campaign(self.store)
         self.hoodie_product_group = self._test_add_hoodie_product_group()
@@ -134,7 +132,6 @@ class CustomerTestCase(TestCase):
     def test_can_create_drop_session(self):
         greg = Customer.objects.get(name="Greg")
         adam = Customer.objects.get(name="Adam")
-
 
     def test_can_add_44_validation_and_find_customers(self):
         original_drop: Campaign = self.original_drop
@@ -162,9 +159,13 @@ class CustomerTestCase(TestCase):
         large_hoodie.add_inventory(10)
         self.assertEqual(large_hoodie.inventory.count(), 10)
 
-    def test_can_create_order
-
-
-    # def test_can_add_has_inventory(self):
-    #     original_drop: Campaign = self.original_drop
-    #     validation = self._test_add_product_validation(campaign=original_drop)
+    def test_adding_hoodie_to_shopping_cart(self):
+        small_hoodie = self._add_hoodie(size="small")
+        small_hoodie.add_inventory(2)
+        self.assertEqual(small_hoodie.inventory.count(), 2)
+        order1 = self._add_hoodie_to_customer(small_hoodie, self.cust_uk)
+        order1.save()
+        self.assertEqual(small_hoodie.inventory.count(), 1)
+        order2 = self._add_hoodie_to_customer(small_hoodie, self.cust_uk_2)
+        order2.save()
+        self.assertEqual(small_hoodie.inventory.count(), 0)

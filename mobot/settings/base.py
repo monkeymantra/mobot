@@ -53,6 +53,9 @@ if not TEST:
 
 EXCHANGE_BACKEND = 'mobot.apps.merchant_services.ftx.OpenExchangeRatesWithFtxBackend'
 
+DEFAULT_TIME_IN_CART_SECS = 1200
+REFRESH_TIME_IN_CART_SECS = 600
+
 MOB = add_currency(
     code='MOB',
     numeric=None,

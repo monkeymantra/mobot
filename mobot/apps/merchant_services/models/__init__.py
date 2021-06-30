@@ -18,6 +18,8 @@ from phonenumber_field.modelfields import PhoneNumberField
 from address.models import AddressField
 from address.models import Address
 from django.db.transaction import atomic
+from django.utils import timezone as tz
+
 
 from django.contrib.auth.models import User
 from mobot.apps.merchant_services.models.utils import DataclassField
@@ -188,6 +190,13 @@ class ProductGroup(Trackable):
     name = models.TextField(help_text="A group of products offered together as a single product which may come in different descriptions/sizes")
 
 
+class ProductManager(models.Manager):
+
+    def add_to_cart(self, customer: Customer, product_id: str):
+        self.model.objects.filter(id=product_id).
+
+    def add
+
 class Product(Trackable):
     store_ref = models.ForeignKey(MCStore, on_delete=models.CASCADE)
     product_group = models.ForeignKey(ProductGroup, on_delete=models.CASCADE, null=True, blank=True, default=None, related_name="products")
@@ -198,6 +207,7 @@ class Product(Trackable):
     allows_refund = models.BooleanField(default=True, blank=False, null=False)
     price = MoneyField(max_digits=14, decimal_places=5, default_currency='GBP', help_text='Price of the product',
                        blank=False, default=1.0)
+    objects = ProductManager()
 
     class Meta:
         app_label = 'merchant_services'
@@ -212,6 +222,13 @@ class Product(Trackable):
             InventoryItem(product_ref=self) for _ in range(number)
         ])
         return created
+
+    @classmethod
+    @atomic
+    def add_to_cart(cls, id: str, customer: Customer):
+        item = cls.objects.filter(id).inventory.filter(state__in=[InventoryItem.InventoryState.AVAILABLE]).first()
+        order: Order = item.add_to_customer_cart(customer)
+        return order
 
 
 class Cart(Trackable):
@@ -254,15 +271,20 @@ class InventoryItem(Trackable):
     @transition(state, source=InventoryState.AVAILABLE, target=InventoryState.IN_CART)
     def add_to_customer_cart(self, customer: Customer):
         cart_item = Order.objects.create_order(item=self, customer=customer)
+        self.state = InventoryItem.InventoryState.IN_CART
         self.cart_item = cart_item
         self.save()
+        return cart_item
 
 
 class OrderManager(models.Manager):
+    def get_queryset(self):
+        return super(models.Manager, self).get_queryset()
 
-    def create_order(self, item: InventoryItem, customer: Customer):
-        self.create(item=item, customer=customer, price=item.product_ref.price)
-
+    def create_order(self, item, customer):
+        order = self.create(item=item, customer=customer, price=item.product_ref.price)
+        print(order)
+        return order
 
 class Order(Trackable):
     class State(models.IntegerChoices):
@@ -278,7 +300,7 @@ class Order(Trackable):
     customer = models.ForeignKey(Customer, on_delete=models.DO_NOTHING, blank=False, null=False, db_index=True)
     price = MoneyField(blank=False, null=False, max_digits=14, decimal_places=5)
     state = FSMIntegerField(choices=State.choices, default=State.STATUS_NEW, protected=True)
-    expiration = models.DateTimeField()
+    expiration = models.DateTimeField(auto_now_add=True)
     shipment = models.OneToOneField(Shipment, related_name="shipment", on_delete=models.CASCADE, blank=True, null=True)
     objects = OrderManager()
 
@@ -290,6 +312,10 @@ class Order(Trackable):
     @transition(state, source=[State.STATUS_PAYMENT_RECEIVED], target=State.STATUS_ORDER_SHIPPED)
     def ship(self):
         pass
+
+    def add_order(self, customer):
+        all = self.objects
+        return all
 
 
 
