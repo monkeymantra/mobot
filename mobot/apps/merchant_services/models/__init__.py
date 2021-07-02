@@ -190,8 +190,6 @@ class ProductGroup(Trackable):
     name = models.TextField(help_text="A group of products offered together as a single product which may come in different descriptions/sizes")
 
 
-
-
 class Product(Trackable):
     store_ref = models.ForeignKey(MCStore, on_delete=models.CASCADE)
     product_group = models.ForeignKey(ProductGroup, on_delete=models.CASCADE, null=True, blank=True, default=None, related_name="products")
@@ -218,21 +216,7 @@ class Product(Trackable):
         ])
         return created
 
-    @classmethod
-    @atomic
-    def add_to_cart(cls, id: str, customer: Customer):
-        item = cls.objects.filter(id).inventory.filter(state__in=[InventoryItem.InventoryState.AVAILABLE]).first()
-        order: Order = item.add_to_customer_cart(customer)
-        return order
 
-
-class Cart(Trackable):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, blank=False, null=False, db_index=True, related_name="cart")
-
-
-class CartItem(Trackable):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
-    expires_after = models.IntegerField(help_text="Expires_after_secs, default 3600")
 
 
 class Shipment(Trackable):
@@ -254,22 +238,23 @@ class Shipment(Trackable):
         self.address.raw
 
 
-
 class InventoryItem(Trackable):
     class InventoryState(models.IntegerChoices):
-        AVAILABLE = 1, 'Available'
-        IN_CART = 0, 'In_Cart'
+        AVAILABLE = 1, 'available'
+        IN_CART = 0, 'in_cart'
     state = FSMIntegerField(default=InventoryState.AVAILABLE, choices=InventoryState.choices)
     product_ref = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="inventory")
     description = models.TextField(help_text="Specifics on this inventory item")
 
-    @transition(state, source=InventoryState.AVAILABLE, target=InventoryState.IN_CART)
+    @transition(state, source='available', target='in_cart')
     def add_to_customer_cart(self, customer: Customer):
         cart_item = Order.objects.create_order(item=self, customer=customer)
-        self.state = InventoryItem.InventoryState.IN_CART
         self.cart_item = cart_item
         self.save()
         return cart_item
+
+    def get_available(self, product: Product):
+        return self.objects.filter(product_ref=product).filter(state__in=[InventoryItem.InventoryState.AVAILABLE])
 
 
 class OrderManager(models.Manager):
@@ -281,6 +266,10 @@ class OrderManager(models.Manager):
         print(order)
         return order
 
+
+class OrderItem(Trackable):
+    inventory_item = models.OneToOneField(InventoryItem, on_delete=models.SET_NULL, null=True, blank=True)
+
 class Order(Trackable):
     class State(models.IntegerChoices):
         STATUS_NEW = 0, 'new'
@@ -290,8 +279,7 @@ class Order(Trackable):
         STATUS_ORDER_AWAITING_SHIPMENT = 4, 'awaiting_shipment'
         STATUS_ORDER_SHIPPED = 5
 
-
-    item = models.OneToOneField(InventoryItem, on_delete=models.DO_NOTHING, blank=False, null=False, related_name="orders", db_index=True)
+    item = models.OneToOneField(OrderItem, on_delete=models.DO_NOTHING, blank=False, null=False, related_name="orders", db_index=True)
     customer = models.ForeignKey(Customer, on_delete=models.DO_NOTHING, blank=False, null=False, db_index=True)
     price = MoneyField(blank=False, null=False, max_digits=14, decimal_places=5)
     state = FSMIntegerField(choices=State.choices, default=State.STATUS_NEW, protected=True)
@@ -363,7 +351,6 @@ class OfferSession(ValidatableMixin):
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, blank=False, null=False, db_index=True, related_name="offer_sessions")
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, blank=False, null=False, db_index=True, related_name="offer_sessions")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, blank=True, null=False, related_name="offer_sessions", db_index=True)
-    cart = models.OneToOneField(Cart, on_delete=models.CASCADE)
 
     def _has_inventory(self):
         self.product.inventory > 0
