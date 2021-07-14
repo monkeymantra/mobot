@@ -13,11 +13,11 @@ from mobilecoin import Client
 from mobot.signald_client.tests.fixtures import produce_message, produce_messages
 from mobot.signald_client import Signal, QueueSubscriber
 from ..chat_client import Mobot
-from ..context import MessageContextBase, Message
+from ..context import MobotContext, Message
 
 
 
-def _test_handler(context: MessageContextBase):
+def _test_handler(context: MobotContext):
     context.log_and_send_message(f"Hello {context.customer.name}!")
 
 def print_message(message: Message, logger: logging.Logger):

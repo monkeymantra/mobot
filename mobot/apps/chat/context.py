@@ -11,7 +11,7 @@ from mobot.signald_client.types import Message as SignalMessage
 from mobot.signald_client import Signal
 
 
-class MessageContextBase(ABC):
+class MobotContext(ABC):
     customer: Customer
     message: SignalMessage
     campaign: Campaign
@@ -41,14 +41,14 @@ class MessageContextFactory:
         self.mobot = mobot
         self.root_logger: Logger = root_logger
         self.signal = signal
-        self.contexts: Dict[str, MessageContextBase] = dict()
+        self.contexts: Dict[str, MobotContext] = dict()
 
-    def get_message_context(self, message: SignalMessage = None, customer: Customer = None) -> MessageContextBase:
+    def get_message_context(self, message: SignalMessage = None, customer: Customer = None) -> MobotContext:
         current_context = self.contexts.get(message.source)
         if current_context:
             return current_context
 
-        class MessageContext(MessageContextBase):
+        class MessageContext(MobotContext):
             """Context for current customer"""
             def __init__(self, signal=self.signal, root_logger=self.root_logger, mobot=self.mobot):
                 self.signal = signal
