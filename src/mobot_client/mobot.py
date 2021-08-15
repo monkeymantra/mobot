@@ -4,7 +4,6 @@
 import os
 import mobilecoin as mc
 import pytz
-import threading
 
 from signald_client import Signal
 
@@ -15,7 +14,6 @@ from mobot_client.models import (
     CustomerStorePreferences,
     BonusCoin,
     ChatbotSettings,
-    Message,
     Order,
     Sku, SessionState, ItemSessionState, DropType, OrderStatus,
 )
@@ -27,8 +25,7 @@ from mobot_client.drop_session import (
 from mobot_client.air_drop_session import AirDropSession
 from mobot_client.item_drop_session import ItemDropSession
 from mobot_client.payments import Payments
-from mobot_client.chat_strings import ChatStrings
-from mobot_client.timeouts import Timeouts
+from mobot_client.messages.chat_strings import ChatStrings
 
 
 class MOBot:

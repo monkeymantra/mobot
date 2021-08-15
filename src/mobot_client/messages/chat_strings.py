@@ -1,6 +1,5 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
 
-from aenum import MultiValueEnum
 
 class ChatStrings:
     # General
@@ -229,10 +228,6 @@ if you have any questions or issues"""
     TIMEOUT_CANCELLED = "Your session has expired."
     TIMEOUT_REFUND = "Your session has expired. We will refund the amount you sent."
 
-
-class ChatCustomerCommandStrings(MultiValueEnum):
-    YES = 'yes', 'y'
-    NO = 'no', 'n', 'cancel'
 
 
 

@@ -9,7 +9,7 @@ from mobot_client.models import (
 )
 from decimal import Decimal
 
-from mobot_client.chat_strings import ChatStrings
+from mobot_client.messages.chat_strings import ChatStrings
 
 
 class Payments:

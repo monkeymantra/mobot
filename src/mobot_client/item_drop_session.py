@@ -13,7 +13,7 @@ from mobot_client.models import (
     Sku,
     CustomerDropRefunds, ItemSessionState, OrderStatus,
 )
-from mobot_client.chat_strings import ChatStrings
+from mobot_client.messages.chat_strings import ChatStrings
 
 
 class ItemDropSession(BaseDropSession):
