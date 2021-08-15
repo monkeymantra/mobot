@@ -1,5 +1,6 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
 
+from aenum import MultiValueEnum
 
 class ChatStrings:
     # General
@@ -209,6 +210,7 @@ Your payment included £{vat:.2f} VAT, collected by MOBot Ltd, VAT ID: {vat_id}
 Please provide your order number ({order_id}) when contacting {store_name} at {store_contact} \
 if you have any questions or issues"""
 
+
     @staticmethod
     def get_options(available_options, capitalize=False):
         option_title = "size"
@@ -226,3 +228,11 @@ if you have any questions or issues"""
     TIMEOUT = "Your session is about to timeout. Send any message to continue."
     TIMEOUT_CANCELLED = "Your session has expired."
     TIMEOUT_REFUND = "Your session has expired. We will refund the amount you sent."
+
+
+class ChatCustomerCommandStrings(MultiValueEnum):
+    YES = 'yes', 'y'
+    NO = 'no', 'n', 'cancel'
+
+
+

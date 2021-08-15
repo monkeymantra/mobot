@@ -5,9 +5,9 @@ import mobilecoin as mc
 
 from decimal import Decimal
 from django.utils import timezone
-from mobot_client.models import DropSession, Drop, CustomerStorePreferences, Order, Sku, ItemSessionState, SessionState
+from mobot_client.models import DropSession, Drop, CustomerStorePreferences, ItemSessionState, SessionState
 
-from mobot_client.chat_strings import ChatStrings
+from mobot_client.messages.chat_strings import ChatStrings
 
 
 class BaseDropSession:
@@ -85,58 +85,44 @@ class BaseDropSession:
         except (Exception,):
             return False
 
+    def _log_and_send_drop_message_to_customer(self, drop_session: DropSession, message: str):
+        self.messenger.log_and_send_message(
+            drop_session.customer,
+            drop_session.customer.phone_number,
+            message
+        )
+
     def handle_drop_session_allow_contact_requested(self, message, drop_session):
+        message_text = message.text.lower()
         if message.text.lower() in ("y", "yes"):
-            customer_prefs = CustomerStorePreferences.objects.create(
+            CustomerStorePreferences.objects.create(
                 customer=drop_session.customer, store=self.store, allows_contact=True
             )
-            drop_session.state = SessionState.COMPLETED
-            drop_session.save()
-            self.messenger.log_and_send_message(
-                drop_session.customer, message.source, ChatStrings.BYE
-            )
-            return
 
-        if message.text.lower() == "n" or message.text.lower() == "no":
+            drop_session.state = SessionState.COMPLETED
+            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.BYE)
+
+        elif message.text.lower() == "n" or message.text.lower() == "no":
             customer_prefs = CustomerStorePreferences(
                 customer=drop_session.customer, store=self.store, allows_contact=False
             )
             customer_prefs.save()
             drop_session.state = SessionState.COMPLETED
-            drop_session.save()
-            self.messenger.log_and_send_message(
-                drop_session.customer, message.source, ChatStrings.BYE
-            )
-            return
+            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.BYE)
 
-        if message.text.lower() == "p" or message.text.lower() == "privacy":
-            self.messenger.log_and_send_message(
-                drop_session.customer,
-                message.source,
-                ChatStrings.PRIVACY_POLICY_REPROMPT.format(url=self.store.privacy_policy_url)
-            )
-            return
-
-        if message.text.lower() == "help":
-            self.messenger.log_and_send_message(
-                drop_session.customer,
-                message.source,
+        elif message.text.lower() == "p" or message.text.lower() == "privacy":
+            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.PRIVACY_POLICY_REPROMPT.format(url=self.store.privacy_policy_url))
+        else:
+            self._log_and_send_drop_message_to_customer(drop_session,
                 ChatStrings.HELP
             )
             return
 
-        self.messenger.log_and_send_message(
-            drop_session.customer,
-            message.source,
-            ChatStrings.HELP
-        )
+        drop_session.save()
 
     def handle_drop_session_ready_to_receive(self, message, drop_session):
-        if (
-                message.text.lower() == "n"
-                or message.text.lower() == "no"
-                or message.text.lower() == "cancel"
-        ):
+        message_text = message.text.lower()
+        if message_text in ('n', 'no', 'cancel'):
             drop_session.state = SessionState.CANCELLED
             drop_session.save()
             self.messenger.log_and_send_message(
@@ -146,7 +132,7 @@ class BaseDropSession:
             )
             return
 
-        if message.text.lower() == "y" or message.text.lower() == "yes":
+        if message_text == "y" or message_text == "yes":
             if not self.under_drop_quota(drop_session.drop):
                 self.messenger.log_and_send_message(
                     drop_session.customer,
@@ -189,18 +175,33 @@ class BaseDropSession:
 
             drop_session.state = SessionState.WAITING_FOR_BONUS_TRANSACTION
             drop_session.save()
-            return
-
-        if message.text.lower() == "help":
+        else:
             self.messenger.log_and_send_message(
                 drop_session.customer,
                 message.source,
                 ChatStrings.YES_NO_HELP
             )
+
+        
+
+    def handle_number_restriction(self, drop_session: DropSession,  source: str):
+        customer = drop_session.customer
+        drop = drop_session.drop
+        if not customer.phone_number.startswith(drop.number_restriction):
+            self.messenger.log_and_send_message(
+                customer,
+                message.source,
+                ChatStrings.COUNTRY_RESTRICTED
+            )
             return
 
-        self.messenger.log_and_send_message(
-            drop_session.customer,
-            message.source,
-            ChatStrings.YES_NO_HELP
-        )
+        customer_payments_address = self.payments.get_payments_address(message.source)
+        if customer_payments_address is None:
+            self.messenger.log_and_send_message(
+                customer,
+                message.source,
+                ChatStrings.PAYMENTS_ENABLED_HELP.format(item_desc=drop.item.description),
+            )
+            return
+
+

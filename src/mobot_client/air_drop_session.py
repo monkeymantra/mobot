@@ -1,17 +1,16 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
 
 import random
-import mobilecoin as mc
 
 from decimal import Decimal
 from mobot_client.drop_session import BaseDropSession
 from mobot_client.models import (
     DropSession,
-    BonusCoin, SessionState,
+    BonusCoin, SessionState, Message
 )
 
 import mobilecoin as mc
-from mobot_client.chat_strings import ChatStrings
+from mobot_client.messages.chat_strings import ChatStrings
 
 
 class AirDropSession(BaseDropSession):
@@ -108,12 +107,10 @@ class AirDropSession(BaseDropSession):
                 message.source,
                 ChatStrings.AIRDROP_INSTRUCTIONS
             )
+        if message.text.lower() == "pay":
+            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.PAY_HELP)
         else:
-            self.messenger.log_and_send_message(
-                drop_session.customer,
-                message.source,
-                ChatStrings.AIRDROP_COMMANDS
-            )
+            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.AIRDROP_COMMANDS)
 
         amount_in_mob = mc.pmob2mob(drop_session.drop.initial_coin_amount_pmob)
 
@@ -121,9 +118,8 @@ class AirDropSession(BaseDropSession):
             drop_session.drop.conversion_rate_mob_to_currency
         )
 
-        self.messenger.log_and_send_message(
-            drop_session.customer,
-            message.source,
+        self._log_and_send_drop_message_to_customer(
+            drop_session,
             ChatStrings.AIRDROP_RESPONSE.format(
                 amount=amount_in_mob.normalize(),
                 symbol=drop_session.drop.currency_symbol,

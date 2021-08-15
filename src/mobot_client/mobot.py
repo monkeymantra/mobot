@@ -224,6 +224,7 @@ class MOBot:
                 customer, message.source, ChatStrings.SUBSCRIBE_NOTIFICATIONS
             )
 
+
         @self.signal.chat_handler("")
         def chat_router(message, match):
             # Store the message
@@ -239,8 +240,8 @@ class MOBot:
                     state__gte=SessionState.READY_TO_RECEIVE_INITIAL,
                     state__lt=SessionState.COMPLETED,
                 )
-            except (Exception,):
-                pass
+            except (DropSession.DoesNotExist,):
+                print(f"Found no active drop session for customer {customer}")
             else:
                 print(f"found active drop session in state {active_drop_session.state}")
                 if active_drop_session.manual_override:
@@ -263,8 +264,8 @@ class MOBot:
                 print(f"found active drop session in state {active_drop_session.state}")
                 if active_drop_session.manual_override:
                     return
-            except (Exception,):
-                pass
+            except (DropSession.DoesNotExist,):
+                print(f"No drop session found.")
             else:
                 item_drop = ItemDropSession(self.store, self.payments, self.messenger)
                 item_drop.handle_active_item_drop_session(message, active_drop_session)
