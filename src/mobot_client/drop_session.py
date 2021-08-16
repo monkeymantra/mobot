@@ -1,13 +1,14 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
 
-
-import mobilecoin as mc
+from typing import Optional
 
 from decimal import Decimal
 from django.utils import timezone
-from mobot_client.models import DropSession, Drop, CustomerStorePreferences, ItemSessionState, SessionState
+import mobilecoin as mc
 
 from mobot_client.messages.chat_strings import ChatStrings
+from mobot_client.messages.commands import CustomerChatCommands
+from mobot_client.models import DropSession, Drop, CustomerStorePreferences, ItemSessionState, SessionState, Customer
 
 
 class BaseDropSession:
@@ -16,192 +17,75 @@ class BaseDropSession:
         self.payments = payments
         self.messenger = messenger
 
-    @staticmethod
-    def get_advertising_drop():
-        drops_to_advertise = Drop.objects.filter(
-            advertisment_start_time__lte=timezone.now()
-        ).filter(start_time__gt=timezone.now())
-
-        if len(drops_to_advertise) > 0:
-            return drops_to_advertise[0]
-        return None
+    def _check_drop_can_fulfill(self, drop: Drop) -> bool:
+        return self.under_drop_quota(drop)
 
     @staticmethod
-    def under_drop_quota(drop):
+    def get_advertising_drop() -> Optional[Drop]:
+        return Drop.objects.get_advertising_drop()
+
+    @staticmethod
+    def under_drop_quota(drop: Drop) -> bool:
         number_initial_drops_finished = DropSession.objects.filter(
             drop=drop, state__gt=SessionState.READY_TO_RECEIVE_INITIAL
         ).count()
         return number_initial_drops_finished < drop.initial_coin_limit
 
-    def minimum_coin_available(self, drop):
-        unspent_pmob = self.payments.get_unspent_pmob()
-        return unspent_pmob >= (
-                drop.initial_coin_amount_pmob + int(self.payments.get_minimum_fee_pmob())
-        )
+    def customer_has_store_preferences(self, customer: Customer) -> bool:
+        return CustomerStorePreferences.objects.count(customer=customer, store=self.store) > 0
 
     @staticmethod
-    def get_active_drop():
-        active_drops = Drop.objects.filter(start_time__lte=timezone.now()).filter(
-            end_time__gte=timezone.now()
-        )
-        return active_drops.first()
+    def customer_has_completed_airdrop(customer: Customer, drop: Drop) -> bool:
+        return customer.drop_sessions.filter(drop=drop, state=SessionState.COMPLETED).count() > 0
 
     @staticmethod
-    def get_customer_store_preferences(customer, store_to_check):
-        try:
-            customer_store_preferences = CustomerStorePreferences.objects.get(
-                customer=customer, store=store_to_check
-            )
-            return customer_store_preferences
-        except (Exception,):
-            return None
+    def customer_has_completed_item_drop(customer: Customer, drop: Drop) -> bool:
+        return customer.drop_sessions.filter(drop=drop, state=ItemSessionState.COMPLETED).count() > 0
 
-    def customer_has_store_preferences(self, customer):
-        try:
-            _ = CustomerStorePreferences.objects.get(
-                customer=customer, store=self.store
-            )
-            return True
-        except (Exception,):
-            return False
-
-    @staticmethod
-    def customer_has_completed_airdrop(customer, drop):
-        try:
-            _completed_drop_session = DropSession.objects.get(
-                customer=customer, drop=drop, state=SessionState.COMPLETED
-            )
-            return True
-        except (Exception,):
-            return False
-
-    @staticmethod
-    def customer_has_completed_item_drop(customer, drop):
-        try:
-            DropSession.objects.get(
-                customer=customer, drop=drop, state=ItemSessionState.COMPLETED
-            )
-            return True
-        except (Exception,):
-            return False
-
-    def _log_and_send_drop_message_to_customer(self, drop_session: DropSession, message: str):
+    def log_and_send_message_to_customer(self, customer: Customer, message: str):
         self.messenger.log_and_send_message(
-            drop_session.customer,
-            drop_session.customer.phone_number,
+            customer,
+            customer.phone_number,
             message
         )
 
     def handle_drop_session_allow_contact_requested(self, message, drop_session):
-        message_text = message.text.lower()
-        if message.text.lower() in ("y", "yes"):
+        command = CustomerChatCommands[message.text]
+        if command is CustomerChatCommands.YES:
             CustomerStorePreferences.objects.create(
                 customer=drop_session.customer, store=self.store, allows_contact=True
             )
-
             drop_session.state = SessionState.COMPLETED
-            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.BYE)
+            self.log_and_send_message_to_customer(drop_session, ChatStrings.BYE)
 
-        elif message.text.lower() == "n" or message.text.lower() == "no":
+        elif command is CustomerChatCommands.NO:
             customer_prefs = CustomerStorePreferences(
                 customer=drop_session.customer, store=self.store, allows_contact=False
             )
             customer_prefs.save()
             drop_session.state = SessionState.COMPLETED
-            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.BYE)
-
-        elif message.text.lower() == "p" or message.text.lower() == "privacy":
-            self._log_and_send_drop_message_to_customer(drop_session, ChatStrings.PRIVACY_POLICY_REPROMPT.format(url=self.store.privacy_policy_url))
+            self.log_and_send_message_to_customer(drop_session, ChatStrings.BYE)
+        elif command is CustomerChatCommands.PRIVACY:
+            self.log_and_send_message_to_customer(drop_session, ChatStrings.PRIVACY_POLICY_REPROMPT.format(url=self.store.privacy_policy_url))
         else:
-            self._log_and_send_drop_message_to_customer(drop_session,
-                ChatStrings.HELP
-            )
-            return
-
+            self.log_and_send_message_to_customer(drop_session, ChatStrings.HELP)
         drop_session.save()
 
-    def handle_drop_session_ready_to_receive(self, message, drop_session):
-        message_text = message.text.lower()
-        if message_text in ('n', 'no', 'cancel'):
-            drop_session.state = SessionState.CANCELLED
-            drop_session.save()
-            self.messenger.log_and_send_message(
-                drop_session.customer,
-                message.source,
-                ChatStrings.SESSION_CANCELLED
-            )
-            return
-
-        if message_text == "y" or message_text == "yes":
-            if not self.under_drop_quota(drop_session.drop):
-                self.messenger.log_and_send_message(
-                    drop_session.customer,
-                    message.source,
-                    ChatStrings.AIRDROP_OVER
-                )
-                drop_session.state = SessionState.COMPLETED
-                drop_session.save()
-                return
-
-            if not self.minimum_coin_available(drop_session.drop):
-                self.messenger.log_and_send_message(
-                    drop_session.customer,
-                    message.source,
-                    ChatStrings.AIRDROP_OVER
-                )
-                drop_session.state = SessionState.COMPLETED
-                drop_session.save()
-                return
-
-            amount_in_mob = mc.pmob2mob(drop_session.drop.initial_coin_amount_pmob)
-            value_in_currency = amount_in_mob * Decimal(
-                drop_session.drop.conversion_rate_mob_to_currency
-            )
-            self.payments.send_mob_to_customer(drop_session.customer, message.source, amount_in_mob, True)
-            self.messenger.log_and_send_message(
-                drop_session.customer,
-                message.source,
-                ChatStrings.AIRDROP_INITIALIZE.format(
-                    amount=amount_in_mob.normalize(),
-                    symbol=drop_session.drop.currency_symbol,
-                    value=value_in_currency
-                )
-            )
-            self.messenger.log_and_send_message(
-                drop_session.customer,
-                message.source,
-                ChatStrings.PAY_HELP
-            )
-
-            drop_session.state = SessionState.WAITING_FOR_BONUS_TRANSACTION
-            drop_session.save()
-        else:
-            self.messenger.log_and_send_message(
-                drop_session.customer,
-                message.source,
-                ChatStrings.YES_NO_HELP
-            )
-
-        
-
-    def handle_number_restriction(self, drop_session: DropSession,  source: str):
+    def handle_number_restriction(self, drop_session: DropSession, source: str):
         customer = drop_session.customer
         drop = drop_session.drop
         if not customer.phone_number.startswith(drop.number_restriction):
             self.messenger.log_and_send_message(
                 customer,
-                message.source,
+                str(customer.phone_number),
                 ChatStrings.COUNTRY_RESTRICTED
             )
-            return
-
-        customer_payments_address = self.payments.get_payments_address(message.source)
-        if customer_payments_address is None:
-            self.messenger.log_and_send_message(
-                customer,
-                message.source,
-                ChatStrings.PAYMENTS_ENABLED_HELP.format(item_desc=drop.item.description),
-            )
-            return
-
+        else:
+            customer_payments_address = self.payments.get_payments_address(str(customer.phone_number))
+            if customer_payments_address is None:
+                self.messenger.log_and_send_message(
+                    customer,
+                    str(customer.phone_number),
+                    ChatStrings.PAYMENTS_ENABLED_HELP.format(item_desc=drop.item.description),
+                )
 

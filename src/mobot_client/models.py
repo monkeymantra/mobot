@@ -1,7 +1,9 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
-import enum
+from typing import Optional
 
 from django.db import models
+from django.utils import timezone
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class SessionState(models.IntegerChoices):
@@ -22,6 +24,20 @@ class Store(models.Model):
         return f"{self.name} ({self.phone_number})"
 
 
+class ItemQuerySet(models.QuerySet):
+
+    def items_available(self) -> models.QuerySet:
+        return self.filter()
+
+
+class ItemManager(models.Manager):
+    def get_queryset(self):
+        return ItemQuerySet(self.model, using=self._db)
+
+    def items_available(self):
+        return self.get_queryset().filter(skus)
+
+
 class Item(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     name = models.TextField()
@@ -29,13 +45,14 @@ class Item(models.Model):
     description = models.TextField(default=None, blank=True, null=True)
     short_description = models.TextField(default=None, blank=True, null=True)
     image_link = models.TextField(default=None, blank=True, null=True)
+    objects = ItemManager()
 
     def __str__(self):
         return f"{self.name}"
 
 
 class Sku(models.Model):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="skus")
     identifier = models.TextField()
     quantity = models.PositiveIntegerField(default=0)
     sort_order = models.PositiveIntegerField(default=0)
@@ -47,6 +64,37 @@ class Sku(models.Model):
 class DropType(models.IntegerChoices):
     AIRDROP = 0, 'airdrop'
     ITEM = 1, 'item'
+
+
+class DropQuerySet(models.QuerySet):
+    def advertising_drops(self) -> models.QuerySet:
+        return self.filter(
+            dvertisment_start_time__lte=timezone.now(),
+            start_time__gt=timezone.now()
+        )
+
+    def active_drops(self) -> models.QuerySet:
+        return self.filter(
+            start_time__lte=timezone.now(),
+            end_time__gte=timezone.now()
+        )
+
+
+class DropManager(models.Manager):
+    def get_queryset(self) -> DropQuerySet:
+        return DropQuerySet(self.model, using=self._db)
+
+    def advertising_drops(self) -> DropQuerySet:
+        self.get_queryset().advertising_drops()
+
+    def get_advertising_drop(self):
+        return self.advertising_drops().first()
+
+    def active_drops(self) -> DropQuerySet:
+        return self.get_queryset().active_drops()
+
+    def get_active_drop(self):
+        return self.active_drops().first()
 
 
 class Drop(models.Model):
@@ -66,9 +114,13 @@ class Drop(models.Model):
     country_code_restriction = models.TextField(default="GB")
     country_long_name_restriction = models.TextField(default="United Kingdom")
     max_refund_transaction_fees_covered = models.PositiveIntegerField(default=0)
+    objects = DropManager()
 
     def value_in_currency(self, amount):
         return amount * self.conversion_rate_mob_to_currency
+
+    def items_available(self):
+        pass
 
     def __str__(self):
         return f"{self.store.name} - {self.item.name}"
@@ -81,7 +133,7 @@ class BonusCoin(models.Model):
 
 
 class Customer(models.Model):
-    phone_number = models.TextField(primary_key=True)
+    phone_number = PhoneNumberField(primary_key=True)
     received_sticker_pack = models.BooleanField(default=False)
 
     def __str__(self):
@@ -89,20 +141,20 @@ class Customer(models.Model):
 
 
 class CustomerStorePreferences(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="customer_store_preferences")
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="customer_store_preferences")
     allows_contact = models.BooleanField()
 
 
 class CustomerDropRefunds(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    drop = models.ForeignKey(Drop, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="drop_refunds")
+    drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name="drop_refunds")
     number_of_times_refunded = models.PositiveIntegerField(default=0)
 
 
 class DropSession(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    drop = models.ForeignKey(Drop, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="drop_sessions")
+    drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name="drop")
     state = models.IntegerField(choices=SessionState.choices, default=SessionState.READY_TO_RECEIVE_INITIAL)
     manual_override = models.BooleanField(default=False)
     bonus_coin_claimed = models.ForeignKey(
@@ -121,6 +173,8 @@ class Message(models.Model):
     text = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
     direction = models.PositiveIntegerField(choices=MessageDirection.choices)
+
+
 
 
 class Order(models.Model):

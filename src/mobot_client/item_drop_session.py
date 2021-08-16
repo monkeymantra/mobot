@@ -5,25 +5,28 @@ import mobilecoin as mc
 import googlemaps
 import pytz
 
+from django.conf import settings
+
 from mobot_client.drop_session import BaseDropSession
 from mobot_client.models import (
     DropSession,
     CustomerStorePreferences,
     Order,
+    Item,
     Sku,
     CustomerDropRefunds, ItemSessionState, OrderStatus,
 )
 from mobot_client.messages.chat_strings import ChatStrings
+from mobot_client.messages.commands import CustomerChatCommands
 
 
 class ItemDropSession(BaseDropSession):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        gmaps_client_key = os.environ["GMAPS_CLIENT_KEY"]
-        self.gmaps = googlemaps.Client(key=gmaps_client_key)
+        self.gmaps = googlemaps.Client(key=settings.GMAPS_CLIENT_KEY)
         
-        self.vat_id = os.environ["VAT_ID"]
+        self.vat_id = settings.
 
     @staticmethod
     def drop_item_has_stock_remaining(drop):
@@ -36,9 +39,9 @@ class ItemDropSession(BaseDropSession):
 
         return False
 
-    def drop_item_get_available(self, drop_item):
+    def drop_item_get_available(self, drop_item: Item):
         available_options = []
-        skus = Sku.objects.filter(item=drop_item).order_by("sort_order")
+        skus = Sku.objects.filter(item=drop_item)
 
         for sku in skus:
             number_ordered = Order.objects.filter(sku=sku).exclude(status=OrderStatus.CANCELLED).count()
@@ -48,19 +51,16 @@ class ItemDropSession(BaseDropSession):
         return available_options
 
     def handle_item_drop_session_waiting_for_size(self, message, drop_session):
-
-        if message.text.lower() == "cancel" or message.text.lower() == 'refund':
+        command = CustomerChatCommands[message.text]
+        if command in (CustomerChatCommands.REFUND, CustomerChatCommands.NO):
             self.handle_cancel_and_refund(message, drop_session, None)
-            return
-        elif message.text.lower() == "help" or message.text == '?':
+        elif command is CustomerChatCommands.HELP:
             available_options = self.drop_item_get_available(drop_session.drop.item)
             self.messenger.log_and_send_message(
                 drop_session.customer, message.source,
                 ChatStrings.ITEM_OPTION_HELP + "\n\n" + ChatStrings.get_options(available_options,capitalize=True) 
             )
-            return
-
-        elif message.text.lower() == "privacy":
+        elif command is CustomerChatCommands.PRIVACY:
             privacy_policy_url = drop_session.drop.store.privacy_policy_url
             self.messenger.log_and_send_message(
                 drop_session.customer,
