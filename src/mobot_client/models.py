@@ -139,7 +139,7 @@ class BonusCoin(models.Model):
     number_available = models.PositiveIntegerField(default=0)
 
     def number_remaining(self) -> int:
-        return self.number_available - self.drop.drop_sessions.filter(bonus_coin_claimed=self).count()
+        return self.number_available - self.drop.drop_sessions.filter(bonus_coin_claimed=self, state__gt=SessionState.READY_TO_RECEIVE_INITIAL).count()
 
 
 class Customer(models.Model):
@@ -187,8 +187,7 @@ class DropSession(models.Model):
     objects = DropSessionManager()
 
     def under_quota(self) -> bool:
-        return DropSession.objects.filter(drop=self.drop)\
-            .aggregate(models.Sum('bonus_coin_claimed__amount_pmob'))
+        return self.bonus_coin_claimed.number_remaining() > 0
 
 
 class MessageDirection(models.IntegerChoices):

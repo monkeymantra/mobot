@@ -8,12 +8,12 @@ import factory
 
 
 
-from mobot_client.models import Drop, DropSession, Item, Sku, Customer, Store, DropType, SessionState, BonusCoin
+from mobot_client.models import Drop, DropSession, Item, Sku, Customer, Store, DropType, SessionState, BonusCoin, ItemSessionState
 
 
 class ModelTests(TestCase):
 
-    def make_session(self, customer: Customer, drop: Drop, num: int = 1):
+    def make_session(self, customer: Customer, drop: Drop, num: int = 1, state=None):
         bonus_coin = BonusCoin.objects.create(
             drop=drop,
             amount_pmob=10 * 1e12,
@@ -43,7 +43,7 @@ class ModelTests(TestCase):
             short_description='MI',
             image_link='https://example.com'
         )
-        self.airdrop = Drop.objects.create(
+        self.air_drop = Drop.objects.create(
             store=self.store,
             drop_type=DropType.AIRDROP,
             pre_drop_description="A drop",
@@ -75,12 +75,12 @@ class ModelTests(TestCase):
         )
 
     def tearDown(self) -> None:
-        self.drop.delete()
+        self.item_drop.delete()
 
         BonusCoin.objects.all().delete()
 
-    def test_makes_models(self):
-        drop_sessions = self.make_airdop_session(customer=self.customer, drop=self.drop, num=5)
+    def test_bonus_coin_available_works(self):
+        drop_sessions = self.make_session(customer=self.customer, drop=self.air_drop, num=20)
         for session in drop_sessions:
             print(session.under_quota())
 
