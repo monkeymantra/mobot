@@ -4,9 +4,10 @@ from decimal import Decimal
 
 from django.db import models
 from django.db.models import F
-from django.db.models.query_utils import Q
 from django.utils import timezone
-from phonenumber_field.modelfields import PhoneNumberField
+from mobot_client.messages.phone_numbers import PhoneNumberField
+
+
 import mobilecoin as mc
 
 class SessionState(models.IntegerChoices):
@@ -35,11 +36,6 @@ class Store(models.Model):
         return f"{self.name} ({self.phone_number})"
 
 
-class ItemManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().annotate(price_in_mob=Decimal(mc.pmob2mob(F('price_in_pmob'))))
-
-
 class Item(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="items")
     name = models.TextField()
@@ -47,6 +43,10 @@ class Item(models.Model):
     description = models.TextField(default=None, blank=True, null=True)
     short_description = models.TextField(default=None, blank=True, null=True)
     image_link = models.TextField(default=None, blank=True, null=True)
+
+    @property
+    def price_in_mob(self) -> Decimal:
+        return mc.pmob2mob(self.price_in_pmob)
 
     def __str__(self):
         return f"{self.name}"
@@ -65,10 +65,12 @@ class Sku(models.Model):
     identifier = models.TextField()
     quantity = models.PositiveIntegerField(default=0)
     sort_order = models.PositiveIntegerField(default=0)
-    objects = AvailableSkuManager()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.item.name} - {self.identifier}"
+
+    def number_available(self) -> int:
+        return self.quantity - self.orders.count()
 
 
 class DropType(models.IntegerChoices):
