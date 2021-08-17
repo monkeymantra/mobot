@@ -42,21 +42,21 @@ class Timeouts:
     @staticmethod
     def customer_needs_refund(customer):
         session = DropSession.objects.filter(customer=customer).values('state').last()
-        if session is not None and session.state in ItemSessionState.refundable_states():
+        if session is not None and session.state in ItemSessionState.refundable_states:
             return True
         return False
 
     @staticmethod
     def set_customer_idle(customer):
         session = DropSession.objects.filter(customer=customer).last()
-        if session is not None and session.state in ItemSessionState.active_states():
+        if session is not None and session.state in ItemSessionState.active_states:
             session.state = ItemSessionState.IDLE
             session.save()
 
     @staticmethod
     def set_customer_idle(customer):
         session = DropSession.objects.filter(customer=customer).last()
-        if session is not None and session.state in ItemSessionState.active_states():
+        if session is not None and session.state in ItemSessionState.active_states:
             if session.state in ItemSessionState.refundable_states():
                 session.state = ItemSessionState.IDLE_AND_REFUNDABLE
             else:
@@ -66,7 +66,7 @@ class Timeouts:
     @staticmethod
     def set_customer_refunded(customer):
         session = DropSession.objects.filter(customer=customer).last()
-        if session is not None and (session.state in ItemSessionState.active_states() or session.state == ItemSessionState.IDLE):
+        if session is not None and (session.state in ItemSessionState.active_states or session.state == ItemSessionState.IDLE):
             session.state = ItemSessionState.REFUNDED
             session.save()
 
@@ -78,7 +78,7 @@ class Timeouts:
             session.save()
 
     def do_refund(self, customer):
-        session = DropSession.objects.filter(customer_id=customer.phone_number).last()
+        session = DropSession.objects.filter(customer=customer).last()
         if session is None:
             return
         # Confirm drop session is active
@@ -87,7 +87,7 @@ class Timeouts:
         # Get amount customer paid
         price = session.drop.item.price_in_pmob
 
-        self.payments.send_mob_to_customer(customer, customer.phone_number, mc.pmob2mob(price), True)
+        self.payments.send_mob_to_customer(customer, str(customer.phone_number), mc.pmob2mob(price), True)
         self.set_customer_refunded(customer)
 
     # FIXME: might need to not be a class method in order to get discovered

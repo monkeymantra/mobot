@@ -164,13 +164,11 @@ class AirDropSession(BaseDropSession):
                 self.log_and_send_message_to_customer(drop_session.customer, ChatStrings.PAY_HELP)
                 drop_session.state = SessionState.WAITING_FOR_BONUS_TRANSACTION
         else:
-            self.messenger.log_and_send_message(
+            self.log_and_send_message_to_customer(
                 drop_session.customer,
-                message.source,
                 ChatStrings.YES_NO_HELP
             )
         drop_session.save()
-
 
     def handle_active_airdrop_drop_session(self, message, drop_session):
         # TODO @Greg: Replace with signal/handler pattern for each state
@@ -196,17 +194,16 @@ class AirDropSession(BaseDropSession):
                 ChatStrings.COUNTRY_RESTRICTED
             )
         elif not self.under_drop_quota(drop):
-            self.messenge.log_and_send_message(
-                customer, message.source, ChatStrings.OVER_QUOTA
+            self.log_and_send_message_to_customer(
+                customer, ChatStrings.OVER_QUOTA
             )
         elif not self.is_minimum_coin_available(drop):
-            self.messenger.log_and_send_message(
-                customer, message.source, ChatStrings.NO_COIN_LEFT
+            self.log_and_send_message_to_customer(
+                customer, ChatStrings.NO_COIN_LEFT
             )
         elif not customer_payments_address:
-            self.messenger.log_and_send_message(
+            self.log_and_send_message_to_customer(
                 customer,
-                message.source,
                 ChatStrings.PAYMENTS_ENABLED_HELP.format(item_desc=drop.item.description),
             )
         else:
@@ -216,14 +213,12 @@ class AirDropSession(BaseDropSession):
                 state=SessionState.READY_TO_RECEIVE_INITIAL,
             )
 
-            self.messenger.log_and_send_message(
+            self.log_and_send_message_to_customer(
                 customer,
-                message.source,
                 ChatStrings.AIRDROP_DESCRIPTION
             )
-            self.messenger.log_and_send_message(
+            self.log_and_send_message_to_customer(
                 customer,
-                message.source,
                 ChatStrings.AIRDROP_INSTRUCTIONS,
             )
-            self.messenger.log_and_send_message(customer, message.source, ChatStrings.READY)
+            self.log_and_send_message_to_customer(customer, ChatStrings.READY)

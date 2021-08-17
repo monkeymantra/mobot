@@ -125,7 +125,7 @@ class Payments:
         return self.minimum_fee_pmob
 
     def handle_item_payment(self, source, customer, amount_paid_mob, drop_session):
-        item_cost_mob = mc.pmob2mob(drop_session.drop.item.price_in_pmob)
+        item_cost_mob = drop_session.drop.item.price_in_mob
 
         if amount_paid_mob < item_cost_mob:
             refund_amount = mc.pmob2mob(

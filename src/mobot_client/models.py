@@ -1,22 +1,33 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
-from typing import Optional
+
+from decimal import Decimal
 
 from django.db import models
+from django.db.models import F
+from django.db.models.query_utils import Q
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
-
+import mobilecoin as mc
 
 class SessionState(models.IntegerChoices):
-    CANCELLED = -1
-    READY_TO_RECEIVE_INITIAL = 0
-    WAITING_FOR_BONUS_TRANSACTION = 1
-    ALLOW_CONTACT_REQUESTED = 2
-    COMPLETED = 3
+    CANCELLED = -1, 'cancelled'
+    READY_TO_RECEIVE_INITIAL = 0, 'ready_to_receive_initial'
+    WAITING_FOR_BONUS_TRANSACTION = 1, 'waiting_for_bonus_tx'
+    ALLOW_CONTACT_REQUESTED = 2, 'allow_contact_requested'
+    COMPLETED = 3, 'completed'
+
+    @staticmethod
+    def active_states():
+        return {
+            SessionState.READY_TO_RECEIVE_INITIAL,
+            SessionState.WAITING_FOR_BONUS_TRANSACTION,
+            SessionState.ALLOW_CONTACT_REQUESTED,
+        }
 
 
 class Store(models.Model):
     name = models.TextField()
-    phone_number = models.TextField()
+    phone_number = PhoneNumberField()
     description = models.TextField()
     privacy_policy_url = models.TextField()
 
@@ -24,31 +35,29 @@ class Store(models.Model):
         return f"{self.name} ({self.phone_number})"
 
 
-class ItemQuerySet(models.QuerySet):
-
-    def items_available(self) -> models.QuerySet:
-        return self.filter()
-
-
 class ItemManager(models.Manager):
     def get_queryset(self):
-        return ItemQuerySet(self.model, using=self._db)
-
-    def items_available(self):
-        return self.get_queryset().filter(skus)
+        return super().get_queryset().annotate(price_in_mob=Decimal(mc.pmob2mob(F('price_in_pmob'))))
 
 
 class Item(models.Model):
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="items")
     name = models.TextField()
     price_in_pmob = models.PositiveIntegerField(default=None, blank=True, null=True)
     description = models.TextField(default=None, blank=True, null=True)
     short_description = models.TextField(default=None, blank=True, null=True)
     image_link = models.TextField(default=None, blank=True, null=True)
-    objects = ItemManager()
 
     def __str__(self):
         return f"{self.name}"
+
+
+class AvailableSkuManager(models.Manager):
+    def get_queryset(self) -> models.QuerySet:
+        return super().get_queryset().annotate(
+            number_ordered=models.Count('orders'),
+            available=F('quantity') - models.Count('orders')
+        )
 
 
 class Sku(models.Model):
@@ -56,6 +65,7 @@ class Sku(models.Model):
     identifier = models.TextField()
     quantity = models.PositiveIntegerField(default=0)
     sort_order = models.PositiveIntegerField(default=0)
+    objects = AvailableSkuManager()
 
     def __str__(self):
         return f"{self.item.name} - {self.identifier}"
@@ -80,12 +90,9 @@ class DropQuerySet(models.QuerySet):
         )
 
 
-class DropManager(models.Manager):
-    def get_queryset(self) -> DropQuerySet:
-        return DropQuerySet(self.model, using=self._db)
-
+class DropManager(models.Manager.from_queryset(DropQuerySet)):
     def advertising_drops(self) -> DropQuerySet:
-        self.get_queryset().advertising_drops()
+        return self.get_queryset().advertising_drops()
 
     def get_advertising_drop(self):
         return self.advertising_drops().first()
@@ -104,7 +111,7 @@ class Drop(models.Model):
     advertisment_start_time = models.DateTimeField()
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='drops')
     number_restriction = models.TextField()
     timezone = models.TextField()
     initial_coin_amount_pmob = models.PositiveIntegerField(default=0)
@@ -114,22 +121,23 @@ class Drop(models.Model):
     country_code_restriction = models.TextField(default="GB")
     country_long_name_restriction = models.TextField(default="United Kingdom")
     max_refund_transaction_fees_covered = models.PositiveIntegerField(default=0)
+
     objects = DropManager()
 
     def value_in_currency(self, amount):
         return amount * self.conversion_rate_mob_to_currency
-
-    def items_available(self):
-        pass
 
     def __str__(self):
         return f"{self.store.name} - {self.item.name}"
 
 
 class BonusCoin(models.Model):
-    drop = models.ForeignKey(Drop, on_delete=models.CASCADE)
+    drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name='bonus_coins')
     amount_pmob = models.PositiveIntegerField(default=0)
     number_available = models.PositiveIntegerField(default=0)
+
+    def number_remaining(self) -> int:
+        return self.number_available - self.drop.drop_sessions.filter(bonus_coin_claimed=self).count()
 
 
 class Customer(models.Model):
@@ -152,14 +160,33 @@ class CustomerDropRefunds(models.Model):
     number_of_times_refunded = models.PositiveIntegerField(default=0)
 
 
+class DropSessionManager(models.Manager):
+
+    def under_drop_quota(drop: Drop) -> bool:
+        number_initial_drops_finished = DropSession.objects.filter(
+            drop=drop, state__gt=SessionState.READY_TO_RECEIVE_INITIAL
+        ).count()
+        return number_initial_drops_finished < drop.initial_coin_limit
+
+
+    def active_sessions(self):
+        self.get_queryset().filter(active=True)
+
+
 class DropSession(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="drop_sessions")
-    drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name="drop")
+    drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name="drop_sessions")
     state = models.IntegerField(choices=SessionState.choices, default=SessionState.READY_TO_RECEIVE_INITIAL)
     manual_override = models.BooleanField(default=False)
     bonus_coin_claimed = models.ForeignKey(
-        BonusCoin, on_delete=models.CASCADE, default=None, blank=True, null=True
+        BonusCoin, on_delete=models.CASCADE, default=None, blank=True, null=True, related_name="drop_sessions"
     )
+
+    objects = DropSessionManager()
+
+    def under_quota(self) -> bool:
+        return DropSession.objects.filter(drop=self.drop)\
+            .aggregate(models.Sum('bonus_coin_claimed__amount_pmob'))
 
 
 class MessageDirection(models.IntegerChoices):
@@ -168,24 +195,55 @@ class MessageDirection(models.IntegerChoices):
 
 
 class Message(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="messages")
     store = models.ForeignKey(Store, on_delete=models.CASCADE)
     text = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
     direction = models.PositiveIntegerField(choices=MessageDirection.choices)
 
 
+class OrderStatus(models.IntegerChoices):
+    STARTED = 0, 'started'
+    CONFIRMED = 1, 'confirmed'
+    SHIPPED = 2, 'shipped'
+    CANCELLED = 3, 'cancelled'
+
+
+class OrderQuerySet(models.QuerySet):
+    def active_orders(self) -> models.QuerySet:
+        return self.filter(status__in=(OrderStatus.STARTED, OrderStatus.CONFIRMED, OrderStatus.SHIPPED))
+
+
+class OrdersManager(models.Manager):
+    def __init__(self, sku: Sku = None, active: bool = True, *args, **kwargs):
+        self._sku = sku
+        self._active = active
+        super().__init__(*args, **kwargs)
+
+    def get_queryset(self) -> models.QuerySet:
+        return OrderQuerySet(
+            model=self.model,
+            using=self._db,
+            hints=self._hints
+        ).active_orders()
+
 
 
 class Order(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    drop_session = models.ForeignKey(DropSession, on_delete=models.CASCADE)
-    sku = models.ForeignKey(Sku, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="orders")
+    drop_session = models.OneToOneField(DropSession, on_delete=models.CASCADE, blank=False, null=False, related_name='order')
+    sku = models.ForeignKey(Sku, on_delete=models.CASCADE, related_name="orders")
     date = models.DateTimeField(auto_now_add=True)
     shipping_address = models.TextField(default=None, blank=True, null=True)
     shipping_name = models.TextField(default=None, blank=True, null=True)
-    status = models.IntegerField(default=0)
+    status = models.IntegerField(default=0, choices=OrderStatus.choices)
     conversion_rate_mob_to_currency = models.FloatField(default=0.0)
+
+    active_orders = OrdersManager(None, True)
+    objects = models.Manager()
+
+    class Meta:
+        base_manager_name = 'active_orders'
 
 
 # ------------------------------------------------------------------------------------------
@@ -231,35 +289,27 @@ class ItemSessionState(models.IntegerChoices):
     ALLOW_CONTACT_REQUESTED = 6
     COMPLETED = 7
 
-
-    @classmethod
-    def active_states(cls):
+    @staticmethod
+    @property
+    def active_states():
         return {
-            cls.NEW,
-            cls.WAITING_FOR_PAYMENT,
-            cls.WAITING_FOR_SIZE,
-            cls.WAITING_FOR_NAME,
-            cls.WAITING_FOR_ADDRESS,
-            cls.SHIPPING_INFO_CONFIRMATION,
-            cls.ALLOW_CONTACT_REQUESTED
+            ItemSessionState.NEW,
+            ItemSessionState.WAITING_FOR_PAYMENT,
+            ItemSessionState.WAITING_FOR_SIZE,
+            ItemSessionState.WAITING_FOR_NAME,
+            ItemSessionState.WAITING_FOR_ADDRESS,
+            ItemSessionState.SHIPPING_INFO_CONFIRMATION,
+            ItemSessionState.ALLOW_CONTACT_REQUESTED
         }
 
-    @classmethod
-    def refundable_states(cls):
+    @staticmethod
+    @property
+    def refundable_states():
         return {
-            cls.IDLE_AND_REFUNDABLE,
-            cls.WAITING_FOR_SIZE,
-            cls.WAITING_FOR_ADDRESS,
-            cls.WAITING_FOR_ADDRESS,
-            cls.WAITING_FOR_NAME,
-            cls.SHIPPING_INFO_CONFIRMATION
+            ItemSessionState.IDLE_AND_REFUNDABLE,
+            ItemSessionState.WAITING_FOR_SIZE,
+            ItemSessionState.WAITING_FOR_ADDRESS,
+            ItemSessionState.WAITING_FOR_ADDRESS,
+            ItemSessionState.WAITING_FOR_NAME,
+            ItemSessionState.SHIPPING_INFO_CONFIRMATION
         }
-
-
-
-
-class OrderStatus(models.IntegerChoices):
-    STARTED = 0, 'started'
-    CONFIRMED = 1, 'confirmed'
-    SHIPPED = 2, 'shipped'
-    CANCELLED = 3, 'cancelled'

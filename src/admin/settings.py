@@ -60,7 +60,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'mobot.urls'
+ROOT_URLCONF = 'admin.urls'
 
 TEMPLATES = [
     {

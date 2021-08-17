@@ -164,6 +164,7 @@ MOBot OUT. Buh-bye!"""
 - an available size,
 - chart for a size chart, or
 - cancel for a refund of your payment"""
+    MISSING_SIZE = "{size} is not an available size"
     ITEM_OPTION_NO_CHART = "Sorry. We don't have a picture of the {description}"
     OUT_OF_STOCK_REFUND = "Uh oh! Looks like we're all out of stock, sorry! Refunding your payment now :)"
     ADDRESS_HOODIE_REQUEST = "What address should we send the hoodie to?"

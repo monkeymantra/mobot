@@ -42,11 +42,12 @@ class BaseDropSession:
     def customer_has_completed_item_drop(customer: Customer, drop: Drop) -> bool:
         return customer.drop_sessions.filter(drop=drop, state=ItemSessionState.COMPLETED).count() > 0
 
-    def log_and_send_message_to_customer(self, customer: Customer, message: str):
+    def log_and_send_message_to_customer(self, customer: Customer, message: str, attachements=None):
         self.messenger.log_and_send_message(
             customer,
-            customer.phone_number,
-            message
+            str(customer.phone_number),
+            message,
+            attachements=attachements
         )
 
     def handle_drop_session_allow_contact_requested(self, message, drop_session):
@@ -89,3 +90,8 @@ class BaseDropSession:
                     ChatStrings.PAYMENTS_ENABLED_HELP.format(item_desc=drop.item.description),
                 )
 
+    def set_customer_store_preferences(self, drop_session: DropSession, allows_contact=True):
+        customer = drop_session.customer
+        customer_store_preferences, _ = customer.customer_store_preferences.get_or_create(store=drop_session.store)
+        customer_store_preferences.allows_contact = allows_contact
+        customer_store_preferences.save()

@@ -5,12 +5,16 @@ from . import CaseInsensitiveEnum
 
 class CustomerChatCommands(CaseInsensitiveEnum):
     YES = 'yes', 'y'
-    NO = 'no', 'n', 'cancel'
+    NO = 'no', 'n', 'cancel', 'c'
     PAY = 'pay'
     DESCRIBE = 'describe'
     HELP = 'help', '?'
-    PRIVACY = 'p', 'privacy'
+    PRIVACY = 'p', 'privacy', 'privacy policy'
     REFUND = 'refund'
+    CHART = 'chart'
+    INFO = 'info'
+    TERMS = 'terms'
+    NAME = 'name'
 
     @classmethod
     def default(cls):
