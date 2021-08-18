@@ -162,7 +162,7 @@ class AirDropSession(BaseDropSession):
                     )
                 )
                 self.log_and_send_message_to_customer(drop_session.customer, ChatStrings.PAY_HELP)
-                drop_session.state = SessionState.WAITING_FOR_BONUS_TRANSACTION
+                drop_session.state = SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX
         else:
             self.log_and_send_message_to_customer(
                 drop_session.customer,
@@ -172,9 +172,9 @@ class AirDropSession(BaseDropSession):
 
     def handle_active_airdrop_drop_session(self, message, drop_session):
         # TODO @Greg: Replace with signal/handler pattern for each state
-        if drop_session.state == SessionState.READY_TO_RECEIVE_INITIAL:
+        if drop_session.state == SessionState.READY:
             self.handle_drop_session_ready_to_receive(message, drop_session)
-        elif drop_session.state == SessionState.WAITING_FOR_BONUS_TRANSACTION:
+        elif drop_session.state == SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX:
             self.handle_drop_session_waiting_for_bonus_transaction(message, drop_session)
         elif drop_session.state == SessionState.ALLOW_CONTACT_REQUESTED:
             self.handle_drop_session_allow_contact_requested(message, drop_session)
@@ -210,7 +210,7 @@ class AirDropSession(BaseDropSession):
             new_drop_session, _ = DropSession.objects.get_or_create(
                 customer=customer,
                 drop=drop,
-                state=SessionState.READY_TO_RECEIVE_INITIAL,
+                state=SessionState.READY,
             )
 
             self.log_and_send_message_to_customer(

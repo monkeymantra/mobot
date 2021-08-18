@@ -8,7 +8,8 @@ import mobilecoin as mc
 
 from mobot_client.messages.chat_strings import ChatStrings
 from mobot_client.messages.commands import CustomerChatCommands
-from mobot_client.models import DropSession, Drop, CustomerStorePreferences, ItemSessionState, SessionState, Customer
+from mobot_client.models import DropSession, Drop, CustomerStorePreferences, SessionState, Customer
+from mobot_client.models.states import ItemSessionState
 
 
 class BaseDropSession:
@@ -27,7 +28,7 @@ class BaseDropSession:
     @staticmethod
     def under_drop_quota(drop: Drop) -> bool:
         number_initial_drops_finished = DropSession.objects.filter(
-            drop=drop, state__gt=SessionState.READY_TO_RECEIVE_INITIAL
+            drop=drop, state__gt=SessionState.READY
         ).count()
         return number_initial_drops_finished < drop.initial_coin_limit
 

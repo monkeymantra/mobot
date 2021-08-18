@@ -16,8 +16,9 @@ from mobot_client.models import (
     Order,
     Item,
     Sku,
-    CustomerDropRefunds, ItemSessionState, OrderStatus,
+    CustomerDropRefunds, OrderStatus,
 )
+from mobot_client.models.states import SessionState
 from mobot_client.messages.chat_strings import ChatStrings
 from mobot_client.messages.commands import CustomerChatCommands
 
@@ -28,7 +29,6 @@ class ItemDropSession(BaseDropSession):
 
         self.gmaps = googlemaps.Client(key=settings.GMAPS_CLIENT_KEY)
         self.vat_id = settings.VAT_ID
-
 
     def drop_item_get_available(self, drop_item: Item):
         available_options = []
@@ -107,7 +107,7 @@ class ItemDropSession(BaseDropSession):
                     conversion_rate_mob_to_currency=drop_session.drop.conversion_rate_mob_to_currency
                 )
 
-                drop_session.state = ItemSessionState.WAITING_FOR_NAME
+                drop_session.state = SessionState.WAITING_FOR_NAME
 
                 self.messenger.log_and_send_message(
                     drop_session.customer, message.source, ChatStrings.NAME_REQUEST
@@ -123,7 +123,7 @@ class ItemDropSession(BaseDropSession):
                 drop_session.customer, ChatStrings.ITEM_HELP
             )
         elif command is CustomerChatCommands.NO:
-            drop_session.state = ItemSessionState.CANCELLED
+            drop_session.state = SessionState.CANCELLED
             self.log_and_send_message_to_customer(
                 drop_session.customer,
                 ChatStrings.SESSION_CANCELLED
@@ -161,7 +161,7 @@ class ItemDropSession(BaseDropSession):
             self.log_and_send_message_to_customer(
                 drop_session.customer, ChatStrings.OUT_OF_STOCK
             )
-            drop_session.state = ItemSessionState.CANCELLED
+            drop_session.state = SessionState.CANCELLED
         else:
             message_to_send = f"{drop_item.name} in " + ChatStrings.get_options(available_options)
             price_in_mob = mc.pmob2mob(drop_item.price_in_pmob)
@@ -194,7 +194,7 @@ class ItemDropSession(BaseDropSession):
             order.status = OrderStatus.CANCELLED
             order.save()
 
-        drop_session.state = ItemSessionState.REFUNDED
+        drop_session.state = SessionState.REFUNDED
         drop_session.save()
 
     def get_country_for_address(self, address) -> str:
@@ -226,7 +226,7 @@ class ItemDropSession(BaseDropSession):
                 country = self.get_country_for_address(address)
                 if country == drop_session.drop.country_code_restriction:
                     order.shipping_address = address[0]["formatted_address"]
-                    drop_session.state = ItemSessionState.SHIPPING_INFO_CONFIRMATION
+                    drop_session.state = SessionState.SHIPPING_INFO_CONFIRMATION
 
                     self.log_and_send_message_to_customer(
                         drop_session.customer,
@@ -262,7 +262,7 @@ class ItemDropSession(BaseDropSession):
                 order.shipping_name = message.text
                 order.save()
 
-                drop_session.state = ItemSessionState.WAITING_FOR_ADDRESS
+                drop_session.state = SessionState.WAITING_FOR_ADDRESS
                 drop_session.save()
 
                 self.log_and_send_message_to_customer(
@@ -306,7 +306,7 @@ class ItemDropSession(BaseDropSession):
                 drop_session.customer, ChatStrings.MISSING_ORDER
             )
         if command is CustomerChatCommands.NAME:
-            drop_session.state = ItemSessionState.WAITING_FOR_NAME
+            drop_session.state = SessionState.WAITING_FOR_NAME
             self.log_and_send_message_to_customer(
                 drop_session.customer, ChatStrings.NAME_REQUEST
             )
@@ -330,12 +330,12 @@ class ItemDropSession(BaseDropSession):
             self.send_order_confirmation(order)
 
             if drop_session.customer.customer_store_preferences.filter(store=drop_session.drop.store).first():
-                drop_session.state = ItemSessionState.COMPLETED
+                drop_session.state = SessionState.COMPLETED
                 self.log_and_send_message_to_customer(
                     drop_session.customer, ChatStrings.BYE
                 )
             else:
-                drop_session.state = ItemSessionState.ALLOW_CONTACT_REQUESTED
+                drop_session.state = SessionState.ALLOW_CONTACT_REQUESTED
                 self.log_and_send_message_to_customer(
                     drop_session.customer, message.source, ChatStrings.FUTURE_NOTIFICATIONS
                 )
@@ -350,12 +350,12 @@ class ItemDropSession(BaseDropSession):
             self.log_and_send_message_to_customer(
                 drop_session.customer, ChatStrings.BYE
             )
-            drop_session.state = ItemSessionState.COMPLETED
+            drop_session.state = SessionState.COMPLETED
 
         elif command is CustomerChatCommands.YES:
             self.set_customer_store_preferences(drop_session, True)
             self.log_and_send_message_to_customer(drop_session.customer, ChatStrings.BYE)
-            drop_session.state = ItemSessionState.COMPLETED
+            drop_session.state = SessionState.COMPLETED
 
         elif command is CustomerChatCommands.PRIVACY:
             privacy_policy_url = drop_session.drop.store.privacy_policy_url
@@ -365,34 +365,32 @@ class ItemDropSession(BaseDropSession):
                 ChatStrings.PRIVACY_POLICY_REPROMPT.format(url=privacy_policy_url),
             )
 
-
-        self.messenger.log_and_send_message(
-            drop_session.customer, message.source, ChatStrings.HELP
+        self.log_and_send_message_to_customer(
+            drop_session.customer, ChatStrings.HELP
         )
 
     def handle_active_item_drop_session(self, message, drop_session):
-        print(drop_session.state)
-        if drop_session.state == ItemSessionState.WAITING_FOR_PAYMENT:
+        if drop_session.state == SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX:
             self.handle_item_drop_session_waiting_for_payment(message, drop_session)
             return
 
-        if drop_session.state == ItemSessionState.WAITING_FOR_SIZE:
+        elif drop_session.state == SessionState.WAITING_FOR_SIZE:
             self.handle_item_drop_session_waiting_for_size(message, drop_session)
             return
 
-        if drop_session.state == ItemSessionState.WAITING_FOR_ADDRESS:
+        elif drop_session.state == SessionState.WAITING_FOR_ADDRESS:
             self.handle_item_drop_session_waiting_for_address(message, drop_session)
             return
 
-        if drop_session.state == ItemSessionState.WAITING_FOR_NAME:
+        elif drop_session.state == SessionState.WAITING_FOR_NAME:
             self.handle_item_drop_session_waiting_for_name(message, drop_session)
             return
 
-        if drop_session.state == ItemSessionState.SHIPPING_INFO_CONFIRMATION:
+        elif drop_session.state == SessionState.SHIPPING_INFO_CONFIRMATION:
             self.handle_item_drop_session_shipping_confirmation(message, drop_session)
             return
 
-        if drop_session.state == ItemSessionState.ALLOW_CONTACT_REQUESTED:
+        elif drop_session.state == SessionState.ALLOW_CONTACT_REQUESTED:
             self.handle_item_drop_session_allow_contact_requested(message, drop_session)
             return
 
@@ -446,5 +444,5 @@ class ItemDropSession(BaseDropSession):
         new_drop_session, _ = DropSession.objects.get_or_create(
             customer=customer,
             drop=drop,
-            state=ItemSessionState.WAITING_FOR_PAYMENT,
+            state=SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX,
         )

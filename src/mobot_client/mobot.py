@@ -18,8 +18,9 @@ from mobot_client.models import (
     BonusCoin,
     ChatbotSettings,
     Order,
-    Sku, SessionState, ItemSessionState, DropType, OrderStatus,
+    Sku, SessionState, DropType, OrderStatus,
 )
+from mobot_client.models.states import ItemSessionState
 
 from mobot_client.air_drop_session import AirDropSession
 from mobot_client.item_drop_session import ItemDropSession
@@ -95,6 +96,7 @@ class MOBot:
         @self.signal.payment_handler
         def handle_payment(source, receipt):
             receipt_status = None
+            customer = None
             transaction_status = TransactionStatus.TRANSACTION_PENDING
 
             if isinstance(source, dict):
@@ -117,7 +119,7 @@ class MOBot:
                 drop_session = DropSession.objects.filter(
                     customer=customer,
                     drop__drop_type=DropType.AIRDROP,
-                    state=SessionState.WAITING_FOR_BONUS_TRANSACTION,
+                    state=SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX,
                 ).first()
 
                 if drop_session:
@@ -138,7 +140,7 @@ class MOBot:
                         )
                         self.payments.send_mob_to_customer(customer, source, amount_paid_mob, False)
                     else:
-                        self.payments.handle_item_payment(
+                        self.payments.handle_item_payment_returning_state(
                             source, customer, amount_paid_mob, drop_session
                         )
             else:
@@ -233,7 +235,7 @@ class MOBot:
             active_drop_session = DropSession.objects.get(
                 customer=customer,
                 drop__drop_type=DropType.AIRDROP,
-                state__gte=SessionState.READY_TO_RECEIVE_INITIAL,
+                state__gte=SessionState.READY,
                 state__lt=SessionState.COMPLETED,
             )
 

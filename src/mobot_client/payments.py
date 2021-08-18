@@ -1,47 +1,55 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
 
-import mobilecoin as mc
 import time
+from decimal import Decimal
+import mobilecoin as mc
+
+from mobot_client.models.phone_numbers import PhoneNumberWithRFC3966 as PhoneNumber
+
+from mobilecoin.client import Client as MobileCoinClient
 
 from mobot_client.models import (
     Order,
-    Sku, ItemSessionState,
-)
-from decimal import Decimal
-
+    Sku, )
+from mobot_client.models.states import SessionState
+from mobot_client.logger import SignalMessenger
+from signald_client.main import Signal
 from mobot_client.messages.chat_strings import ChatStrings
+from mobot_client.models import Store, Payment, DropSession, Customer
+
 
 
 class Payments:
     """The Payments class handles the logic relevant to sending MOB and handling receipts."""
 
     def __init__(
-            self, mobilecoin_client, minimum_fee_pmob, account_id, store, messenger, signal
+            self, mobilecoin_client: MobileCoinClient, minimum_fee_pmob: int, account_id: str, store: Store, messenger: SignalMessenger, signal: Signal
     ):
         self.mcc = mobilecoin_client
         self.minimum_fee_pmob = minimum_fee_pmob
         self.account_id = account_id
-        self.store = (store,)
+        self.store = store
         self.signal = signal
         self.messenger = messenger
 
-    def get_payments_address(self, source):
-        if isinstance(source, dict):
-            source = source["number"]
-
-        customer_signal_profile = self.signal.get_profile(source, True)
+    def get_payments_address(self, dest: PhoneNumber):
+        customer_signal_profile = self.signal.get_profile(dest.rfc3966, True)
         print(customer_signal_profile)
         return customer_signal_profile.get("mobilecoin_address")
 
-    def send_mob_to_customer(self, customer, source, amount_mob, cover_transaction_fee):
-        if isinstance(source, dict):
-            source = source["number"]
+    def send_mob_to_customer(self, drop_session: DropSession, amount_mob: Decimal, cover_transaction_fee: bool) -> Payment:
+        customer = drop_session.customer
 
-        customer_payments_address = self.get_payments_address(source)
+        payment = Payment(
+            drop_session=drop_session,
+            direction=Payment.PaymentDirection.TO_CUSTOMER,
+            amount_in_mob=amount_mob,
+        )
+        customer_payments_address = self.get_payments_address(customer.phone_number)
         if customer_payments_address is None:
-            self.messenger.log_and_send_message(
+
+            self.messenger.log_and_send_message_to_customer(
                 customer,
-                source,
                 ChatStrings.PAYMENTS_DEACTIVATED.format(number=self.store.phone_number),
             )
             return
@@ -59,7 +67,7 @@ class Payments:
         )
 
     def send_mob_to_address(
-            self, source, account_id, amount_in_mob, customer_payments_address
+            self, source: dict, account_id: str, amount_in_mob: Decimal, customer_payments_address: str
     ):
         # customer_payments_address is b64 encoded, but full service wants a b58 address
         customer_payments_address = mc.utility.b64_public_address_to_b58_wrapper(
@@ -81,7 +89,7 @@ class Payments:
         else:
             self.signal.send_message(
                 source,
-                "couldn't generate a receipt, please contact us if you didn't a payment!",
+                "couldn't generate a receipt, please contact us if you didn't get a payment!",
             )
             return
 
@@ -124,28 +132,26 @@ class Payments:
     def get_minimum_fee_pmob(self):
         return self.minimum_fee_pmob
 
-    def handle_item_payment(self, source, customer, amount_paid_mob, drop_session):
+    def handle_item_payment_returning_state(self, amount_paid_mob: Decimal, drop_session: DropSession) -> Payment:
         item_cost_mob = drop_session.drop.item.price_in_mob
-
+        customer = drop_session.customer
+        payment = Payment(drop_session=drop_session)
         if amount_paid_mob < item_cost_mob:
             refund_amount = mc.pmob2mob(
                 mc.mob2pmob(amount_paid_mob) - self.minimum_fee_pmob
             )
             if refund_amount > 0:
-                self.messenger.log_and_send_message(
+                self.messenger.log_and_send_message_to_customer(
                     customer,
-                    source,
                     ChatStrings.NOT_ENOUGH_REFUND.format(amount_paid=refund_amount.normalize())
                 )
-                self.send_mob_to_customer(customer, source, amount_paid_mob, False)
+                self.send_mob_to_customer(customer, amount_paid_mob, False)
             else:
-                self.messenger.log_and_send_message(
-                    customer,
-                    source,
+                self.messenger.log_and_send_message_to_customer(
+                    drop_session.customer,
                     ChatStrings.NOT_ENOUGH
                 )
             return
-
         if (
                 mc.mob2pmob(amount_paid_mob)
                 > mc.mob2pmob(item_cost_mob) + self.minimum_fee_pmob
@@ -180,7 +186,7 @@ class Payments:
                 ChatStrings.OUT_OF_STOCK_REFUND
             )
             self.send_mob_to_customer(customer, source, item_cost_mob, True)
-            drop_session.state = ItemSessionState.REFUNDED
+            drop_session.state = SessionState.REFUNDED
             drop_session.save()
             return
 
@@ -189,7 +195,7 @@ class Payments:
         )
 
         self.messenger.log_and_send_message(customer, source, message_to_send)
-        drop_session.state = ItemSessionState.WAITING_FOR_SIZE
+        drop_session.state = SessionState.WAITING_FOR_SIZE
         drop_session.save()
 
         return

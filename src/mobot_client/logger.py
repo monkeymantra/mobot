@@ -2,29 +2,32 @@
 
 from django.db.models import IntegerChoices
 
-from mobot_client.models import Message, MessageDirection
+from mobot_client.models import Message, MessageDirection, Customer, Store
 
 
 class SignalMessenger:
-    def __init__(self, signal, store):
+    def __init__(self, signal, store: Store):
         self.signal = signal
         self.store = store
 
-    def log_and_send_message(self, customer, source, text, attachments=[]):
+    def log_and_send_message(self, customer: Customer, source: dict, text: str, attachments=[]):
         if isinstance(source, dict):
-            source = source["number"]
+            destination = source["number"]
+        else:
+            destination = str(customer.phone_number)
 
-        sent_message = Message(
+        Message.objects.create(
             customer=customer,
             store=self.store,
             text=text,
             direction=MessageDirection.SENT,
         )
-        sent_message.save()
-        self.signal.send_message(source, text, attachments=attachments)
+        self.signal.send_message(destination, text, attachments=attachments)
+
+    def log_and_send_message_to_customer(self, customer: Customer, text: str, attachments=[]):
+        self.log_and_send_message(customer, None, text, attachments)
 
     @staticmethod
-    def log_received(message, customer, store):
-        incoming = Message(customer=customer, store=store, text=message.text,
+    def log_received(message: Message, customer: Customer, store: Store):
+        Message.objects.create(customer=customer, store=store, text=message.text,
                            direction=MessageDirection.RECEIVED)
-        incoming.save()
