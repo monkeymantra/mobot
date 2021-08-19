@@ -1,9 +1,5 @@
-#  Copyright (c) 2021 MobileCoin. All rights reserved.
-
-#  Copyright (c) 2021 MobileCoin. All rights reserved.
-
 # Copyright (c) 2021 MobileCoin. All rights reserved.
-from typing import List
+from typing import List, Iterator
 
 from django.test import TestCase
 from django.utils import timezone
@@ -39,50 +35,7 @@ class ModelTests(TestCase):
             Store.objects.all().delete()
             Drop.objects.all().delete()
             DropSession.objects.all().delete()
-        # self.store = Store.objects.create(
-        #     name="Test Store",
-        #     phone_number='+18054412653',
-        #     description='My Store',
-        #     privacy_policy_url='https://example.com'
-        # )
-        # self.item = Item.objects.create(
-        #     store=self.store,
-        #     name='TestItem',
-        #     price_in_pmob=20000000,
-        #     description='My item',
-        #     short_description='MI',
-        #     image_link='https://example.com'
-        # )
-        # self.air_drop = Drop.objects.create(
-        #     store=self.store,
-        #     drop_type=DropType.AIRDROP,
-        #     pre_drop_description="A drop",
-        #     advertisment_start_time=timezone.now(),
-        #     start_time=timezone.now(),
-        #     end_time=timezone.now(),
-        #     item=self.item,
-        #     number_restriction='+44',
-        #     timezone='PST',
-        #     initial_coin_amount_pmob=4*1e12,
-        #     initial_coin_limit=2*1e12,
-        # )
-        # self.item_drop = Drop.objects.create(
-        #     store=self.store,
-        #     drop_type=DropType.ITEM,
-        #     pre_drop_description="An item drop",
-        #     advertisment_start_time=timezone.now(),
-        #     start_time=timezone.now(),
-        #     end_time=timezone.now(),
-        #     item=self.item,
-        #     number_restriction='+44',
-        #     timezone='PST',
-        #     initial_coin_amount_pmob=4 * 1e12,
-        #     initial_coin_limit=2 * 1e12,
-        # )
-        #
-        # self.customer = Customer.objects.create(
-        #     phone_number="+14045564883",
-        # )
+
 
     def tearDown(self) -> None:
         pass
@@ -94,11 +47,22 @@ class ModelTests(TestCase):
 
     def test_items_available(self):
         store = StoreFactory.create()
-        store.save()
         item = ItemFactory.create(store=store, store_id=store.id)
-        item.save()
-        drop = DropFactory(drop_type=DropType.ITEM, store=store, store_id=store.id, item=item, item_id=item.id)
-        drop.save()
+        drop = DropFactory.create(drop_type=DropType.ITEM, store=store, item=item)
+        skus: Iterator[Sku] = SkuFactory.create_batch(size=3, item=item, quantity=10)
+
+        for sku in skus:
+            self.assertEqual(sku.number_available(), 10)
+
+        self.assertEqual(item.drops.count(), 1)
+
+        print("Creating sessions...")
+        drop_sessions: Iterator[DropSession] = DropSessionFactory.create_batch(size=10, drop=drop)
+        for drop_session in drop_sessions:
+            self.assertEqual(drop_session.drop, drop)
+
+        print("Creating some orders...")
+        
 
         # skus = {
         #     variation: Sku.objects.create(

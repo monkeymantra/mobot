@@ -2,7 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/venv1/src/mobilecoin" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/venv1/src/mobilecoin/mobilecoin" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/venv_old/src/mobilecoin" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/venv_old/src/mobilecoin/mobilecoin" vcs="Git" />
   </component>
 </project>

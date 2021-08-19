@@ -24,6 +24,7 @@ from mobot_client.models import (
     SessionState,
     Customer,
     CustomerStorePreferences,
+    Order,
     BonusCoin,
     DropType,
     Item,
@@ -47,8 +48,8 @@ class DropFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Drop
 
-    drop_type = DropType.ITEM
-    item = factory.SubFactory('mobot_client.tests.factories.ItemFactory')
+    drop_type = factory.Iterator([DropType.ITEM, DropType.AIRDROP])
+    store = factory.SubFactory(StoreFactory)
     id = factory.Sequence(lambda n: n)
     pre_drop_description = factory.Sequence(lambda n: f"Item drop {n}")
     advertisment_start_time = fake.date_time_between(start_date='-2d', end_date='+10d', tzinfo=pytz.utc)
@@ -59,6 +60,17 @@ class DropFactory(factory.django.DjangoModelFactory):
     initial_coin_amount_pmob = 4 * 1e12
     initial_coin_limit = 2 * 1e12
 
+    @factory.lazy_attribute
+    def store_id(self):
+        return self.store.pk
+
+    @factory.lazy_attribute
+    def item_id(self):
+        return self.item.pk
+
+
+
+
 
 class ItemFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -67,7 +79,6 @@ class ItemFactory(factory.django.DjangoModelFactory):
     @factory.post_generation
     def add_items_to_store(obj, created, *args, **kwargs):
         obj.store.items.add(obj)
-        obj.store_id = obj.store.id
 
     id = factory.Faker('pyint')
     name = f"{factory.Faker('name')}  {factory.Faker('sentence', nb_words=5)}"
@@ -75,13 +86,19 @@ class ItemFactory(factory.django.DjangoModelFactory):
     description = factory.Faker('sentence', nb_words=50)
     short_description = factory.Faker('sentence', nb_words=10)
     image_link = factory.Sequence(lambda n: f"https://img.com/image{n}")
-    store = factory.RelatedFactory(StoreFactory)
+    store = factory.SubFactory(StoreFactory)
+
+    @factory.lazy_attribute
+    def store_id(self):
+        return self.store.id
+
 
 
 class SkuFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Sku
-        django_get_or_create = ('identifier')
+
+    identifier = factory.Faker('pystr')
 
 
 class CustomerFactory(factory.django.DjangoModelFactory):
@@ -112,6 +129,19 @@ class DropSessionFactory(factory.django.DjangoModelFactory):
         model = DropSession
 
     customer = factory.SubFactory(CustomerFactory)
-    drop = factory.SubFactory(DropFactory, drop_type=DropType.ITEM)
-    bonus_coin_claimed = factory.SubFactory(BonusCoinFactory)
 
+    @factory.lazy_attribute
+    def drop_id(self):
+        return self.drop.id
+
+
+class OrderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Order
+        inline_args = ('sku',)
+
+    drop_session = factory.SubFactory(DropSessionFactory)
+
+    @factory.lazy_attribute
+    def customer(self):
+        return self.drop_session.customer

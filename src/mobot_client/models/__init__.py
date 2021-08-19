@@ -329,9 +329,9 @@ class Payment(models.Model):
         SUCCEEDED = 1, 'succeeded'
         NOT_NECESSARY = 2, 'empty because amount in mob was too small to send'
 
-    drop_session = models.ForeignKey(DropSession, related_name='payments', null=True, blank=True)
+    drop_session = models.ForeignKey(DropSession, related_name='payments', null=True, blank=True, on_delete=models.CASCADE)
     payment_type = models.IntegerField(choices=PaymentType.choices, db_index=True)
-    amount_in_mob = models.DecimalField(db_index=True, max_length=16, max_digits=6, default=Decimal(0))
+    amount_in_mob = models.DecimalField(db_index=True, max_length=16, decimal_places=6, max_digits=6, default=Decimal(0))
     direction = models.IntegerField(choices=PaymentDirection.choices, default=PaymentDirection.TO_STORE)
     status = models.IntegerField(choices=PaymentStatus.choices, default=PaymentStatus.NOT_STARTED)
     payment_address = models.TextField(blank=True, null=True)
