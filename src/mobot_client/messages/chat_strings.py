@@ -139,9 +139,10 @@ We have {item_description}"""
 
 For pictures, a sizing chart, and more info, type 'info'"""
 
-    NOT_ENOUGH_REFUND = "Not enough MOB, sending back {amount_paid} MOB"
+    NOT_ENOUGH_MOB_SENDING_REFUND = "Not enough MOB, sending back {amount_paid} MOB"
     NOT_ENOUGH = "Not enough MOB, unable to refund since it is less than the network fee"
     EXCESS_PAYMENT = "You overpaid. Sending back {refund} MOB"
+    COULD_NOT_GENERATE_RECEIPT = "couldn't generate a receipt, please contact us if you didn't get a payment!"
     OUT_OF_STOCK = "Uh oh! Looks like we're all out of stock, sorry!"
     # ITEM_SOLD_OUT = (
     #     "Sorry, we're all out of that selection! Refunding your MOB, try again :)"

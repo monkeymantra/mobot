@@ -4,12 +4,16 @@ from typing import Optional
 
 from decimal import Decimal
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 import mobilecoin as mc
 
 from mobot_client.messages.chat_strings import ChatStrings
 from mobot_client.messages.commands import CustomerChatCommands
 from mobot_client.models import DropSession, Drop, CustomerStorePreferences, SessionState, Customer
-from mobot_client.models.states import ItemSessionState
+from mobot_client.models.states import SessionState
+
 
 
 class BaseDropSession:
@@ -41,7 +45,7 @@ class BaseDropSession:
 
     @staticmethod
     def customer_has_completed_item_drop(customer: Customer, drop: Drop) -> bool:
-        return customer.drop_sessions.filter(drop=drop, state=ItemSessionState.COMPLETED).count() > 0
+        return customer.drop_sessions.filter(drop=drop, state=SessionState.COMPLETED).count() > 0
 
     def log_and_send_message_to_customer(self, customer: Customer, message: str, attachements=None):
         self.messenger.log_and_send_message(

@@ -6,7 +6,7 @@ from decimal import Decimal
 from mobot_client.drop_session import BaseDropSession
 from mobot_client.models import (
     DropSession, Drop,
-    BonusCoin, SessionState, Message
+    BonusCoin, SessionState, Message, Customer, Payment
 )
 
 import mobilecoin as mc
@@ -27,14 +27,13 @@ class AirDropSession(BaseDropSession):
     def _check_drop_can_fulfill(self, drop: Drop):
         return super(AirDropSession, self)._check_drop_can_fulfill(drop) and self.is_minimum_coin_available(drop)
 
-    def handle_airdrop_payment(self, source, customer, amount_paid_mob, drop_session):
-        if not self.is_minimum_coin_available(drop_session.drop):
-            self.messenger.log_and_send_message(
-                customer,
-                source,
-                ChatStrings.AIRDROP_SOLD_OUT_REFUND.format(amount=amount_paid_mob.normalize())
+    def handle_airdrop_payment(self, payment: Payment):
+        if not self.is_minimum_coin_available(payment.drop_session.drop):
+            self.log_and_send_message_to_customer(
+                payment.drop_session.customer,
+                ChatStrings.AIRDROP_SOLD_OUT_REFUND.format(amount=payment.amount_in_mob.normalize())
             )
-            self.send_mob_to_customer(customer, source, amount_paid_mob, True)
+            self.payments.send_mob_to_customer(payment.drop_session, payment.amount_in_mob, True)
             return
 
         bonus_coin_objects_for_drop = BonusCoin.objects.filter(drop=drop_session.drop)
@@ -179,9 +178,9 @@ class AirDropSession(BaseDropSession):
         elif drop_session.state == SessionState.ALLOW_CONTACT_REQUESTED:
             self.handle_drop_session_allow_contact_requested(message, drop_session)
 
-    def handle_no_active_airdrop_drop_session(self, customer, message, drop):
-        customer_payments_address = self.payments.get_payments_address(message.source)
-        if self.customer_has_completed_airdrop(customer, drop):
+    def handle_no_active_airdrop_drop_session(self, customer: Customer, message: Message, drop: Drop):
+        customer_payments_address = self.payments.get_payments_address(customer.phone_number)
+        if customer.has_completed_drop(drop):
             self.messenger.log_and_send_message(
                 customer,
                 message.source,

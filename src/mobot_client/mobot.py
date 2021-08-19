@@ -5,7 +5,6 @@ import os
 import mobilecoin as mc
 import pytz
 import logging
-import enum
 
 from signald_client import Signal
 
@@ -18,21 +17,14 @@ from mobot_client.models import (
     BonusCoin,
     ChatbotSettings,
     Order,
-    Sku, SessionState, DropType, OrderStatus,
+    Sku, DropType, OrderStatus
 )
-from mobot_client.models.states import ItemSessionState
+from mobot_client.models.states import SessionState
 
 from mobot_client.air_drop_session import AirDropSession
 from mobot_client.item_drop_session import ItemDropSession
-from mobot_client.payments import Payments
+from mobot_client.payments import Payments, TransactionStatus
 from mobot_client.messages.chat_strings import ChatStrings
-
-
-
-
-class TransactionStatus(str, enum.Enum):
-    TRANSACTION_PENDING = "TransactionPending"
-    TRANSACTION_SUCCESS = "TransactionSuccess"
 
 
 class MOBot:
@@ -71,9 +63,10 @@ class MOBot:
             self.store,
             self.messenger,
             self.signal,
+            public_address=self.public_address
         )
 
-        self.drop = DropSession(self.store, self.payments, self.messenger)
+        self.session = ItemDropSession(self.store, self.payments, self.messenger)
 
         # self.timeouts = Timeouts(self.messenger, self.payments, schedule=30, idle_timeout=60, cancel_timeout=300)
 
@@ -96,52 +89,34 @@ class MOBot:
         @self.signal.payment_handler
         def handle_payment(source, receipt):
             receipt_status = None
-            customer = None
-            transaction_status = TransactionStatus.TRANSACTION_PENDING
+            customer, _ = Customer.objects.get_or_create(phone_number=source)
 
             if isinstance(source, dict):
                 source = source["number"]
 
             self.logger.info("received receipt", receipt)
-            receipt = mc.utility.b64_receipt_to_full_service_receipt(receipt.receipt)
-
-            while transaction_status == TransactionStatus.TRANSACTION_PENDING:
-                receipt_status = self.mcc.check_receiver_receipt_status(
-                    self.public_address, receipt
-                )
-                transaction_status = receipt_status["receipt_transaction_status"]
-                self.logger.info("Waiting for", receipt, receipt_status)
-
-            if transaction_status == TransactionStatus.TRANSACTION_SUCCESS:
-                amount_paid_mob = mc.pmob2mob(receipt_status["txo"]["value_pmob"])
-
-                customer, _ = Customer.objects.get_or_create(phone_number=source)
-                drop_session = DropSession.objects.filter(
-                    customer=customer,
-                    drop__drop_type=DropType.AIRDROP,
-                    state=SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX,
-                ).first()
-
-                if drop_session:
+            payment = self.payments.receive_payment(customer, receipt)
+            if payment.drop_session:
+                if payment.drop_session.drop.drop_type == DropType.AIRDROP:
                     air_drop = AirDropSession(self.store, self.payments, self.messenger)
-                    air_drop.handle_airdrop_payment(
-                        source, customer, amount_paid_mob, drop_session
-                    )
+                    air_drop.handle_airdrop_payment(payment)
                 else:
-                    ### Couldn't find an AirDrop; searching for an Item Drop
-                    drop_session = DropSession.objects.filter(
+                    self.payments.handle_item_payment(
+                        payment.amount_in_mob, item_drop_session
+                    )
+                    item_drop_session = DropSession.objects.filter(
                         customer=customer,
                         drop__drop_type=DropType.ITEM,
-                        state=ItemSessionState.WAITING_FOR_PAYMENT,
+                        state=SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX,
                     ).first()
-                    if not drop_session:
+                    if not item_drop_session:
                         self.messenger.log_and_send_message(
                             customer, source, ChatStrings.UNSOLICITED_PAYMENT
                         )
                         self.payments.send_mob_to_customer(customer, source, amount_paid_mob, False)
                     else:
-                        self.payments.handle_item_payment_returning_state(
-                            source, customer, amount_paid_mob, drop_session
+                        self.payments.handle_item_payment(
+                            amount_paid_mob, item_drop_session
                         )
             else:
                 self.logger.warning(f"failed: {transaction_status}")

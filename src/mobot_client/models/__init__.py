@@ -125,12 +125,20 @@ class Drop(models.Model):
 
     objects = DropManager()
 
+    class Meta:
+        base_manager_name = 'objects'
 
     def clean(self):
         assert self.start_time < self.end_time
 
-    def value_in_currency(self, amount):
-        return amount * self.conversion_rate_mob_to_currency
+    def value_in_currency(self, amount: Decimal) -> Decimal:
+        return amount * Decimal(self.conversion_rate_mob_to_currency)
+
+    def under_quota(self) -> bool:
+        if self.drop_type == DropType.AIRDROP:
+            return self.drop_sessions.count() < self.initial_coin_limit
+        else:
+            return True
 
     def __str__(self):
         return f"{self.store.name} - {self.item.name}"
@@ -158,6 +166,9 @@ class BonusCoin(models.Model):
 class Customer(models.Model):
     phone_number = PhoneNumberField(primary_key=True, db_index=True)
     received_sticker_pack = models.BooleanField(default=False)
+
+    def has_completed_drop(self, drop: Drop) -> bool:
+        self.drop_sessions.filter(drop=drop, state=SessionState.COMPLETED).first() is not None
 
     def __str__(self):
         return f"{self.phone_number}"
@@ -302,17 +313,28 @@ class ChatbotSettings(SingletonModel):
 
 class Payment(models.Model):
     class PaymentType(models.IntegerChoices):
-        REFUND = 0, 'refund'
+        REFUND = -2, 'refund'
+        BONUS = -1, 'bonus'
         PAYMENT = 1, 'payment'
 
     class PaymentDirection(models.IntegerChoices):
         TO_CUSTOMER = -1, 'to_customer'
         TO_STORE = 1, 'to_store'
 
-    drop_session = models.ForeignKey(DropSession, related_name='payments')
+    class PaymentStatus(models.IntegerChoices):
+        NOT_STARTED = -3, 'not_started'
+        FAILURE = -2, 'failure'
+        NO_ADDRESS = -1, 'no address found for customer'
+        IN_PROGRESS = 0, 'in progress'
+        SUCCEEDED = 1, 'succeeded'
+        NOT_NECESSARY = 2, 'empty because amount in mob was too small to send'
+
+    drop_session = models.ForeignKey(DropSession, related_name='payments', null=True, blank=True)
     payment_type = models.IntegerField(choices=PaymentType.choices, db_index=True)
-    amount_in_mob = models.DecimalField(db_index=True, max_length=16, max_digits=6)
+    amount_in_mob = models.DecimalField(db_index=True, max_length=16, max_digits=6, default=Decimal(0))
     direction = models.IntegerField(choices=PaymentDirection.choices, default=PaymentDirection.TO_STORE)
+    status = models.IntegerField(choices=PaymentStatus.choices, default=PaymentStatus.NOT_STARTED)
+    payment_address = models.TextField(blank=True, null=True)
 
 
 
