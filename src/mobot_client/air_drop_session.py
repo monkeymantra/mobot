@@ -25,73 +25,81 @@ class AirDropSession(BaseDropSession):
         )
 
     def _check_drop_can_fulfill(self, drop: Drop):
-        return super(AirDropSession, self)._check_drop_can_fulfill(drop) and self.is_minimum_coin_available(drop)
+        return drop.under_quota() and self.is_minimum_coin_available(drop)
 
     def handle_airdrop_payment(self, payment: Payment):
+        drop_session = payment.drop_session
+        customer = drop_session.customer
         if not self.is_minimum_coin_available(payment.drop_session.drop):
             self.log_and_send_message_to_customer(
                 payment.drop_session.customer,
                 ChatStrings.AIRDROP_SOLD_OUT_REFUND.format(amount=payment.amount_in_mob.normalize())
             )
-            self.payments.send_mob_to_customer(payment.drop_session, payment.amount_in_mob, True)
-            return
-
-        bonus_coin_objects_for_drop = BonusCoin.objects.filter(drop=drop_session.drop)
-        bonus_coins = []
-
-        for bonus_coin in bonus_coin_objects_for_drop:
-            number_claimed = DropSession.objects.filter(
-                drop=drop_session.drop, bonus_coin_claimed=bonus_coin
-            ).count()
-            number_remaining = bonus_coin.number_available_at_start - number_claimed
-            bonus_coins.extend([bonus_coin] * number_remaining)
-
-        if len(bonus_coins) <= 0:
-            self.messenger.log_and_send_message(
-                customer,
-                source,
-                ChatStrings.BONUS_SOLD_OUT_REFUND.format(amount=amount_paid_mob.normalize())
+            refund_payment = self.payments.send_mob_to_customer(
+                customer=payment.drop_session.customer,
+                amount_mob=payment.amount_in_mob,
+                cover_transaction_fee=True,
+                drop_session=drop_session,
+                payment_type=Payment.PaymentType.REFUND,
             )
-            self.send_mob_to_customer(customer, source, amount_paid_mob, True)
         else:
-            initial_coin_amount_mob = mc.pmob2mob(
-                drop_session.drop.initial_coin_amount_pmob
-            )
-            random_index = random.randint(0, len(bonus_coins) - 1)
-            amount_in_mob = mc.pmob2mob(bonus_coins[random_index].amount_pmob)
-            amount_to_send_mob = (
-                    amount_in_mob
-                    + amount_paid_mob
-                    + mc.pmob2mob(self.payments.get_minimum_fee_pmob())
-            )
-            self.payments.send_mob_to_customer(customer, source, amount_to_send_mob, True)
-            drop_session.bonus_coin_claimed = bonus_coins[random_index]
-            total_prize = Decimal(initial_coin_amount_mob + amount_in_mob)
-            self.messenger.log_and_send_message(
-                customer,
-                source,
-                ChatStrings.REFUND_SENT.format(amount=amount_to_send_mob.normalize(), total_prize=total_prize.normalize())
-            )
-            self.messenger.log_and_send_message(
-                customer, source, ChatStrings.PRIZE.format(prize=total_prize.normalize())
-            )
-            self.messenger.log_and_send_message(
-                customer,
-                source,
-                ChatStrings.AIRDROP_COMPLETED
-            )
+            bonus_coin_objects_for_drop = drop_session.drop.bonus_coins
+            bonus_coins = []
 
-            # This is an exception-free, django-friendly way of finding out if a customer has store preferences
-            if hasattr(customer, 'customer_store_preferences'):
-                self.messenger.log_and_send_message(
-                    customer, source, ChatStrings.BYE
+            for bonus_coin in bonus_coin_objects_for_drop:
+                bonus_coins.extend([bonus_coin] * bonus_coin.number_remaining())
+
+            if not bonus_coin_objects_for_drop.count():
+                self.log_and_send_message_to_customer(
+                    drop_session.customer,
+                    ChatStrings.BONUS_SOLD_OUT_REFUND.format(amount=payment.amount_in_mob.normalize())
                 )
-                drop_session.state = SessionState.COMPLETED
+                self.payments.send_mob_to_customer(
+                    customer=drop_session.customer,
+                    amount_mob=payment.amount_in_mob,
+                    cover_transaction_fee=True,
+                    drop_session=drop_session,
+                    payment_type=Payment.PaymentType.REFUND
+                )
             else:
-                self.messenger.log_and_send_message(
-                    customer, source, ChatStrings.NOTIFICATIONS_ASK
+                initial_coin_amount_mob = mc.pmob2mob(
+                    drop_session.drop.initial_coin_amount_pmob
                 )
-                drop_session.state = SessionState.ALLOW_CONTACT_REQUESTED
+                random_index = random.randint(0, len(bonus_coins) - 1)
+                amount_in_mob = mc.pmob2mob(bonus_coins[random_index].amount_pmob)
+                amount_to_send_mob = (
+                        amount_in_mob
+                        + payment.amount_in_mob
+                        + mc.pmob2mob(self.payments.get_minimum_fee_pmob())
+                )
+                self.payments.send_mob_to_customer(customer=customer,
+                                                   amount_mob=amount_to_send_mob,
+                                                   cover_transaction_fee=True)
+                drop_session.bonus_coin_claimed = bonus_coins[random_index]
+                total_prize = Decimal(initial_coin_amount_mob + amount_in_mob)
+                self.log_and_send_message_to_customer(
+                    customer,
+                    ChatStrings.REFUND_SENT.format(amount=amount_to_send_mob.normalize(), total_prize=total_prize.normalize())
+                )
+                self.log_and_send_message_to_customer(
+                    customer, ChatStrings.PRIZE.format(prize=total_prize.normalize())
+                )
+                self.log_and_send_message_to_customer(
+                    customer,
+                    ChatStrings.AIRDROP_COMPLETED
+                )
+
+                # This is an exception-free, django-friendly way of finding out if a customer has store preferences
+                if hasattr(customer, 'customer_store_preferences'):
+                    self.log_and_send_message_to_customer(
+                        customer, ChatStrings.BYE
+                    )
+                    drop_session.state = SessionState.COMPLETED
+                else:
+                    self.log_and_send_message_to_customer(
+                        customer, ChatStrings.NOTIFICATIONS_ASK
+                    )
+                    drop_session.state = SessionState.ALLOW_CONTACT_REQUESTED
         drop_session.save()
 
     def handle_drop_session_waiting_for_bonus_transaction(self, message, drop_session):
@@ -139,7 +147,7 @@ class AirDropSession(BaseDropSession):
                 ChatStrings.SESSION_CANCELLED
             )
         elif command is CustomerChatCommands.YES:
-            if not self.under_drop_quota(drop_session.drop):
+            if not drop_session.drop.under_quota():
                 self.messenger.log_and_send_message(
                     drop_session.customer,
                     message.source,
@@ -192,7 +200,7 @@ class AirDropSession(BaseDropSession):
                 message.source,
                 ChatStrings.COUNTRY_RESTRICTED
             )
-        elif not self.under_drop_quota(drop):
+        elif not drop.under_quota():
             self.log_and_send_message_to_customer(
                 customer, ChatStrings.OVER_QUOTA
             )

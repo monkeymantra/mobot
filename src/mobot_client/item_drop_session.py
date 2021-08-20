@@ -148,7 +148,7 @@ class ItemDropSession(BaseDropSession):
                 "/signald/attachments/" + attachment.strip()
                 for attachment in drop_item.image_link.split(",")
             ] if drop_item.image_link else None
-            self.log_and_send_message_to_customer(drop_session.customer, item_description_text, attachements=attachments)
+            self.log_and_send_message_to_customer(drop_session.customer, item_description_text, attachments=attachments)
         else:
             self.log_and_send_message_to_customer(
                 drop_session.customer, ChatStrings.ITEM_HELP_SHORT

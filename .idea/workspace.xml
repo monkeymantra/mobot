@@ -3,9 +3,13 @@
   <component name="ChangeListManager">
     <list default="true" id="fe3c705e-48e5-4566-b863-2c2e778ef483" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/admin/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/admin/settings.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/air_drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/air_drop_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/drop_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/item_drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/item_drop_session.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/mobot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/mobot.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/payments.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/payments.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/tests/factories/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/tests/factories/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/tests/model_tests.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/tests/model_tests.py" afterDir="false" />
     </list>
@@ -18,6 +22,11 @@
     <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)" />
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="feature/item_sizes_sara" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitSEFilterConfiguration">
@@ -42,7 +51,109 @@
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="settings.editor.selected.configurable" value="preferences.general" />
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Django tests.Test: mobot_client.tests.model_tests.ModelTests">
+    <configuration name="Test: mobot_client.tests.ModelTests" type="DjangoTestsConfigurationType" temporary="true">
+      <module name="mobot" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="DJANGO_SETTINGS_MODULE" value="admin.settings" />
+      </envs>
+      <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <EXTENSION ID="net.ashald.envfile">
+        <option name="IS_ENABLED" value="false" />
+        <option name="IS_SUBST" value="false" />
+        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+        <option name="IS_IGNORE_MISSING_FILES" value="false" />
+        <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+        <ENTRIES>
+          <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+        </ENTRIES>
+      </EXTENSION>
+      <option name="TARGET" value="mobot_client.tests.ModelTests" />
+      <option name="SETTINGS_FILE" value="" />
+      <option name="CUSTOM_SETTINGS" value="false" />
+      <option name="USE_OPTIONS" value="false" />
+      <option name="OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Test: mobot_client.tests.ModelTests.test_items_available" type="DjangoTestsConfigurationType" temporary="true">
+      <module name="mobot" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="TARGET" value="mobot_client.tests.ModelTests.test_items_available" />
+      <option name="SETTINGS_FILE" value="" />
+      <option name="CUSTOM_SETTINGS" value="false" />
+      <option name="USE_OPTIONS" value="false" />
+      <option name="OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Test: mobot_client.tests.ModelTests.test_makes_models" type="DjangoTestsConfigurationType" temporary="true">
+      <module name="mobot" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="TARGET" value="mobot_client.tests.ModelTests.test_makes_models" />
+      <option name="SETTINGS_FILE" value="" />
+      <option name="CUSTOM_SETTINGS" value="false" />
+      <option name="USE_OPTIONS" value="false" />
+      <option name="OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Test: mobot_client.tests.model_tests.ModelTests" type="DjangoTestsConfigurationType" temporary="true">
+      <module name="mobot" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+        <env name="DJANGO_SETTINGS_MODULE" value="admin.settings" />
+      </envs>
+      <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <EXTENSION ID="net.ashald.envfile">
+        <option name="IS_ENABLED" value="false" />
+        <option name="IS_SUBST" value="false" />
+        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+        <option name="IS_IGNORE_MISSING_FILES" value="false" />
+        <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+        <ENTRIES>
+          <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+        </ENTRIES>
+      </EXTENSION>
+      <option name="TARGET" value="mobot_client.tests.model_tests.ModelTests" />
+      <option name="SETTINGS_FILE" value="" />
+      <option name="CUSTOM_SETTINGS" value="false" />
+      <option name="USE_OPTIONS" value="false" />
+      <option name="OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="Test: mobot_client.tests.model_tests.ModelTests.test_items_available" type="DjangoTestsConfigurationType" temporary="true">
       <module name="mobot" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -51,7 +162,7 @@
         <env name="PYTHONUNBUFFERED" value="1" />
         <env name="DJANGO_SETTINGS_MODULE" value="admin.settings" />
       </envs>
-      <option name="SDK_HOME" value="" />
+      <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
       <option name="WORKING_DIRECTORY" value="" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
@@ -74,9 +185,20 @@
       <option name="OPTIONS" value="" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Django tests.Test: mobot_client.tests.model_tests.ModelTests.test_items_available" />
+      <item itemvalue="Django tests.Test: mobot_client.tests.ModelTests.test_makes_models" />
+      <item itemvalue="Django tests.Test: mobot_client.tests.ModelTests.test_items_available" />
+      <item itemvalue="Django tests.Test: mobot_client.tests.ModelTests" />
+      <item itemvalue="Django tests.Test: mobot_client.tests.model_tests.ModelTests" />
+    </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Django tests.Test: mobot_client.tests.model_tests.ModelTests" />
+        <item itemvalue="Django tests.Test: mobot_client.tests.ModelTests.test_makes_models" />
         <item itemvalue="Django tests.Test: mobot_client.tests.model_tests.ModelTests.test_items_available" />
+        <item itemvalue="Django tests.Test: mobot_client.tests.ModelTests" />
+        <item itemvalue="Django tests.Test: mobot_client.tests.ModelTests.test_items_available" />
       </list>
     </recent_temporary>
   </component>
@@ -116,13 +238,15 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/mobot_client/tests/model_tests.py</url>
-          <line>74</line>
-          <option name="timeStamp" value="6" />
+          <line>116</line>
+          <option name="timeStamp" value="12" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/mobot$Test__mobot_client_tests_model_tests_ModelTests.coverage" NAME="Test: mobot_client.tests.model_tests.ModelTests Coverage Results" MODIFIED="1629493543010" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/mobot$Test__mobot_client_tests_model_tests_ModelTests_test_items_available.coverage" NAME="Test: mobot_client.tests.model_tests.ModelTests.test_items_available Coverage Results" MODIFIED="1629481205894" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/mobot$Test__mobot_client_tests_ModelTests_test_makes_models.coverage" NAME="Test: mobot_client.tests.ModelTests.test_makes_models Coverage Results" MODIFIED="1629487675870" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

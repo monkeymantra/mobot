@@ -17,13 +17,11 @@ from mobot_client.models.states import SessionState
 
 
 class BaseDropSession:
-    def __init__(self, store, payments, messenger):
+    def __init__(self, store, payments, messenger, customer: Customer):
         self.store = store
         self.payments = payments
         self.messenger = messenger
-
-    def _check_drop_can_fulfill(self, drop: Drop) -> bool:
-        return self.under_drop_quota(drop)
+        self.customer: Customer = customer
 
     @staticmethod
     def get_advertising_drop() -> Optional[Drop]:
@@ -36,9 +34,6 @@ class BaseDropSession:
         ).count()
         return number_initial_drops_finished < drop.initial_coin_limit
 
-    def customer_has_store_preferences(self, customer: Customer) -> bool:
-        return CustomerStorePreferences.objects.count(customer=customer, store=self.store) > 0
-
     @staticmethod
     def customer_has_completed_airdrop(customer: Customer, drop: Drop) -> bool:
         return customer.drop_sessions.filter(drop=drop, state=SessionState.COMPLETED).count() > 0
@@ -47,12 +42,12 @@ class BaseDropSession:
     def customer_has_completed_item_drop(customer: Customer, drop: Drop) -> bool:
         return customer.drop_sessions.filter(drop=drop, state=SessionState.COMPLETED).count() > 0
 
-    def log_and_send_message_to_customer(self, customer: Customer, message: str, attachements=None):
+    def log_and_send_message_to_customer(self, customer: Customer, message: str, attachments=None):
         self.messenger.log_and_send_message(
             customer,
             str(customer.phone_number),
             message,
-            attachements=attachements
+            attachments=attachments
         )
 
     def handle_drop_session_allow_contact_requested(self, message, drop_session):

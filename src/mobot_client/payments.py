@@ -1,9 +1,8 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
-import enum
 from typing import Optional, Dict
 import time
 from decimal import Decimal
-
+import enum
 
 import mobilecoin as mc
 import logging
@@ -71,8 +70,7 @@ class Payments:
         self.logger.info(customer_signal_profile)
         return customer_signal_profile.get("mobilecoin_address")
 
-    def send_mob_to_customer(self, drop_session: DropSession, amount_mob: Decimal, cover_transaction_fee: bool) -> Payment:
-        customer = drop_session.customer
+    def send_mob_to_customer(self, customer: Customer, amount_mob: Decimal, cover_transaction_fee: bool = False, drop_session: DropSession=None, payment_type: Payment.PaymentType = None) -> Payment:
         customer_payments_address = self.get_payments_address(customer.phone_number)
 
         payment = Payment.objects.create(
@@ -81,7 +79,11 @@ class Payments:
             amount_in_mob=amount_mob,
             status=Payment.PaymentStatus.NOT_STARTED,
             payment_address=customer_payments_address,
+            payment_type=payment_type,
         )
+        self.logger.info(f"Sending {amount_mob} mob to customer {customer}. "
+                         f"{'Transaction fee covered' if cover_transaction_fee else 'Fee: ' + self.minimum_fee_pmob}")
+
         if not payment.payment_address:
             self.responder.handle_payment_without_customer_address(payment)
         else:
@@ -99,6 +101,16 @@ class Payments:
 
         payment.save()
         return payment
+
+    def send_mob_to_session_customer(self, drop_session: DropSession, amount_mob: Decimal,
+                                     payment_type=Payment.PaymentType.BONUS, cover_transaction_fee: bool = False):
+        return self.send_mob_to_customer(
+            customer=drop_session.customer,
+            amount_mob=amount_mob,
+            cover_transaction_fee=cover_transaction_fee,
+            payment_type=payment_type,
+            drop_session=drop_session
+        )
 
     def check_txo(self, txo_id: str, dest: str, retries: int = 10, retry_sleep: float = 1.0) -> bool:
         for _ in range(retries):
@@ -214,54 +226,32 @@ class Payments:
                     customer,
                     ChatStrings.NOT_ENOUGH_MOB_SENDING_REFUND.format(amount_paid=refund_amount.normalize())
                 )
-                self.send_mob_to_customer(customer, amount_paid_mob, False)
+                self.send_mob_to_session_customer(
+                    amount_mob=payment.amount_in_mob,
+                    cover_transaction_fee=False,
+                    drop_session=drop_session,
+                    payment_type=Payment.PaymentType.REFUND
+                )
             else:
                 self.messenger.log_and_send_message_to_customer(
                     drop_session.customer,
                     ChatStrings.NOT_ENOUGH
                 )
         elif (
-                mc.mob2pmob(amount_paid_mob)
+                mc.mob2pmob(payment.amount_in_mob)
                 > mc.mob2pmob(item_cost_mob) + self.minimum_fee_pmob
         ):
-            excess = amount_paid_mob - item_cost_mob
+            excess = payment.amount_in_mob - item_cost_mob
             net_excess = mc.pmob2mob(mc.mob2pmob(excess) - self.minimum_fee_pmob)
             self.messenger.log_and_send_message_to_customer(
                 customer,
                 ChatStrings.EXCESS_PAYMENT.format(refund=net_excess.normalize())
             )
-            self.send_mob_to_customer(customer, excess, False)
+            self.send_mob_to_session_customer(drop_session=drop_session, amount_mob=excess)
         else:
             self.messenger.log_and_send_message_to_customer(
                 customer,
-                f"We received {amount_paid_mob.normalize()} MOB"
+                f"We received {payment.amount_in_mob.normalize()} MOB"
             )
-
-        available_options = []
-        skus = Sku.objects.filter(item=drop_session.drop.item).order_by("sort_order")
-
-        for sku in skus:
-            number_ordered = Order.objects.filter(sku=sku).count()
-            if number_ordered < sku.quantity:
-                available_options.append(sku)
-
-        if len(available_options) == 0:
-            self.messenger.log_and_send_message_to_customer(
-                customer,
-                ChatStrings.OUT_OF_STOCK_REFUND
-            )
-            self.send_mob_to_customer(drop_session, item_cost_mob, True)
-            drop_session.state = SessionState.REFUNDED
-            drop_session.save()
-            return
-
-        message_to_send = (
-            ChatStrings.WAITING_FOR_SIZE_PREFIX + ChatStrings.get_options(available_options, capitalize=True)
-        )
-
-        self.messenger.log_and_send_message_to_customer(customer, message_to_send)
-        drop_session.state = SessionState.WAITING_FOR_SIZE
-        drop_session.save()
-
-        return
+        return payment
 

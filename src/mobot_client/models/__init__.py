@@ -115,7 +115,7 @@ class Drop(models.Model):
     advertisment_start_time = models.DateTimeField(db_index=True)
     start_time = models.DateTimeField(db_index=True)
     end_time = models.DateTimeField(db_index=True)
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='drops', db_index=True)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='drops', db_index=True, null=True, blank=True)
     number_restriction = models.TextField(default="+44")
     timezone = models.TextField(default="UTC")
     initial_coin_amount_pmob = models.PositiveIntegerField(default=0)
@@ -148,8 +148,7 @@ class Drop(models.Model):
 
 
 class BonusCoinManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(number_available_at_start__gte=models.Count(F('drop_sessions').filter(state__lte=SessionState.READY)))
+    pass
 
 
 class BonusCoin(models.Model):
@@ -159,8 +158,11 @@ class BonusCoin(models.Model):
 
     available = BonusCoinManager()
 
+    class Meta:
+        base_manager_name = 'available'
+
     def number_remaining(self) -> int:
-        return self.number_available_at_start - self.drop_sessions.filter(state__gt=SessionState.READY).count()
+        return self.number_available_at_start - self.drop_sessions(manager='active_sessions').count()
 
     def number_claimed(self) -> int:
         return self.number_available_at_start - self.number_remaining()
@@ -206,7 +208,7 @@ class DropSessionManager(models.Manager):
 
 class ActiveDropSessionManager(DropSessionManager):
     def get_queryset(self) -> models.QuerySet:
-        active_sessions = super().get_queryset().filter(active=True)
+        active_sessions = super().get_queryset().filter(state__gt=SessionState.READY)
         return active_sessions
 
 
@@ -223,7 +225,7 @@ class DropSession(models.Model):
     active_sessions = ActiveDropSessionManager()
 
     class Meta:
-        base_manager_name = 'active_sessions'
+        base_manager_name = 'objects'
 
     def under_quota(self) -> bool:
         return self.bonus_coin_claimed.number_remaining() > 0
@@ -333,7 +335,7 @@ class Payment(models.Model):
         NOT_NECESSARY = 2, 'empty because amount in mob was too small to send'
 
     drop_session = models.ForeignKey(DropSession, related_name='payments', null=True, blank=True, on_delete=models.CASCADE)
-    payment_type = models.IntegerField(choices=PaymentType.choices, db_index=True)
+    payment_type = models.IntegerField(choices=PaymentType.choices, db_index=True, null=True, blank=True)
     amount_in_mob = models.DecimalField(db_index=True, max_length=16, decimal_places=6, max_digits=6, default=Decimal(0))
     direction = models.IntegerField(choices=PaymentDirection.choices, default=PaymentDirection.TO_STORE)
     status = models.IntegerField(choices=PaymentStatus.choices, default=PaymentStatus.NOT_STARTED)

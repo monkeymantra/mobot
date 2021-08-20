@@ -55,6 +55,7 @@ class MOBot:
 
         get_network_status_response = self.mcc.get_network_status()
         self.minimum_fee_pmob = int(get_network_status_response["fee_pmob"])
+        self.sessions = {}
 
         self.payments = Payments(
             self.mcc,
@@ -101,8 +102,8 @@ class MOBot:
                     air_drop = AirDropSession(self.store, self.payments, self.messenger)
                     air_drop.handle_airdrop_payment(payment)
                 else:
-                    self.payments.handle_item_payment(
-                        payment.amount_in_mob, item_drop_session
+                    payment = self.payments.handle_item_payment(
+                        payment
                     )
                     item_drop_session = DropSession.objects.filter(
                         customer=customer,
@@ -113,13 +114,11 @@ class MOBot:
                         self.messenger.log_and_send_message(
                             customer, source, ChatStrings.UNSOLICITED_PAYMENT
                         )
-                        self.payments.send_mob_to_customer(customer, source, amount_paid_mob, False)
+                        self.payments.send_mob_to_customer(customer, source, payment.amount_in_mob, False)
                     else:
-                        self.payments.handle_item_payment(
-                            amount_paid_mob, item_drop_session
-                        )
+                        self.payments.handle_item_payment(payment)
             else:
-                self.logger.warning(f"failed: {transaction_status}")
+                self.logger.warning(f"Transaction failed")
                 return "The transaction failed!"
 
         @self.signal.chat_handler("coins")

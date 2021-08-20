@@ -66,7 +66,8 @@ class DropFactory(factory.django.DjangoModelFactory):
 
     @factory.lazy_attribute
     def item_id(self):
-        return self.item.pk
+        if hasattr(self, 'item'):
+            return self.item.pk
 
 
 
@@ -131,6 +132,7 @@ class DropSessionFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DropSession
 
+    id = factory.Faker('pyint', max_value=9999999)
     customer = factory.SubFactory(CustomerFactory)
 
     @factory.lazy_attribute
