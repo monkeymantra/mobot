@@ -133,7 +133,7 @@ class MOBot:
                         bonus_coin_claimed=bonus_coin
                     ).count()
                     message_to_send += (
-                        f"{number_claimed} / {bonus_coin.number_available} - {mc.pmob2mob(bonus_coin.amount_pmob).normalize()} claimed\n"
+                        f"{number_claimed} / {bonus_coin.number_available_at_start} - {mc.pmob2mob(bonus_coin.amount_pmob).normalize()} claimed\n"
                     )
                 return message_to_send
             else:

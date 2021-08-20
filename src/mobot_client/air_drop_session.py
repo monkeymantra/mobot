@@ -43,7 +43,7 @@ class AirDropSession(BaseDropSession):
             number_claimed = DropSession.objects.filter(
                 drop=drop_session.drop, bonus_coin_claimed=bonus_coin
             ).count()
-            number_remaining = bonus_coin.number_available - number_claimed
+            number_remaining = bonus_coin.number_available_at_start - number_claimed
             bonus_coins.extend([bonus_coin] * number_remaining)
 
         if len(bonus_coins) <= 0:

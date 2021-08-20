@@ -71,6 +71,9 @@ class Sku(models.Model):
     def number_available(self) -> int:
         return self.quantity - self.orders.count()
 
+    def in_stock(self) -> bool:
+        return self.number_available() > 0
+
 
 class DropType(models.IntegerChoices):
     AIRDROP = 0, 'airdrop'
@@ -144,23 +147,23 @@ class Drop(models.Model):
         return f"{self.store.name} - {self.item.name}"
 
 
-class BonusCoinQuerySet(models.QuerySet):
-    def get_available(self):
-        return self.filter(number_available__gte=models.Count(F('drop_sessions')).filter(state__lte=SessionState.READY))
-
-
-class BonusCoinManager(models.Manager.from_queryset(BonusCoinQuerySet)):
-    pass
+class BonusCoinManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(number_available_at_start__gte=models.Count(F('drop_sessions').filter(state__lte=SessionState.READY)))
 
 
 class BonusCoin(models.Model):
     drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name='bonus_coins', db_index=True)
     amount_pmob = models.PositiveIntegerField(default=0)
-    number_available = models.PositiveIntegerField(default=0)
-    objects = BonusCoinManager()
+    number_available_at_start = models.PositiveIntegerField(default=0)
+
+    available = BonusCoinManager()
 
     def number_remaining(self) -> int:
-        return self.number_available - self.drop_sessions.filter(state__gt=SessionState.READY).count()
+        return self.number_available_at_start - self.drop_sessions.filter(state__gt=SessionState.READY).count()
+
+    def number_claimed(self) -> int:
+        return self.number_available_at_start - self.number_remaining()
 
 
 class Customer(models.Model):
@@ -248,7 +251,7 @@ class OrderStatus(models.IntegerChoices):
 
 class OrderQuerySet(models.QuerySet):
     def active_orders(self) -> models.QuerySet:
-        return self.filter(status__in=(OrderStatus.STARTED, OrderStatus.CONFIRMED, OrderStatus.SHIPPED))
+        return self.filter(status__lt=OrderStatus.CANCELLED)
 
 
 class OrdersManager(models.Manager):
@@ -266,13 +269,13 @@ class OrdersManager(models.Manager):
 
 
 class Order(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="orders")
-    drop_session = models.OneToOneField(DropSession, on_delete=models.CASCADE, blank=False, null=False, related_name='order')
-    sku = models.ForeignKey(Sku, on_delete=models.CASCADE, related_name="orders")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, db_index=True, related_name="orders")
+    drop_session = models.OneToOneField(DropSession, on_delete=models.CASCADE, db_index=True,  blank=False, null=False, related_name='order')
+    sku = models.ForeignKey(Sku, on_delete=models.CASCADE, related_name="orders", db_index=True)
     date = models.DateTimeField(auto_now_add=True)
     shipping_address = models.TextField(default=None, blank=True, null=True)
     shipping_name = models.TextField(default=None, blank=True, null=True)
-    status = models.IntegerField(default=0, choices=OrderStatus.choices)
+    status = models.IntegerField(default=0, choices=OrderStatus.choices, db_index=True)
     conversion_rate_mob_to_currency = models.FloatField(default=0.0)
 
     active_orders = OrdersManager(None, True)

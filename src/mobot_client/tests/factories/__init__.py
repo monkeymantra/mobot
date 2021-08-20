@@ -101,6 +101,7 @@ class SkuFactory(factory.django.DjangoModelFactory):
     identifier = factory.Faker('pystr')
 
 
+
 class CustomerFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Customer
@@ -114,6 +115,8 @@ class BonusCoinFactory(factory.django.DjangoModelFactory):
         model = BonusCoin
 
     drop = factory.SubFactory(DropFactory, drop_type=DropType.AIRDROP)
+    amount_pmob = factory.Faker('pyint', min_value=1e12, max_value=5 * 1e12)
+    number_available_at_start = 10
 
 
 class ItemDropFactory(DropFactory):
@@ -145,3 +148,7 @@ class OrderFactory(factory.django.DjangoModelFactory):
     @factory.lazy_attribute
     def customer(self):
         return self.drop_session.customer
+
+
+class GenericItemDropFactory(factory.django.DjangoModelFactory):
+    pass
