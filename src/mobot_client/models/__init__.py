@@ -1,11 +1,13 @@
 #  Copyright (c) 2021 MobileCoin. All rights reserved.
 
-
+import random
 from decimal import Decimal
+from typing import Optional
 
 from django.db import models
 from django.db.models import F, BooleanField, ExpressionWrapper, Q
 from django.utils import timezone
+from django.db import transaction
 
 from mobot_client.models.states import SessionState
 from mobot_client.models.phone_numbers import PhoneNumberField
@@ -60,6 +62,7 @@ class Sku(models.Model):
     sort_order = models.PositiveIntegerField(default=0)
 
     available = AvailableSkuManager()
+    objects = models.Manager()
 
     class Meta:
         unique_together = ('item', 'identifier')
@@ -148,7 +151,22 @@ class Drop(models.Model):
 
 
 class BonusCoinManager(models.Manager):
-    pass
+    def get_queryset(self):
+        return super().get_queryset()\
+            .annotate(num_active_sessions=models.Count('drop_sessions', filter=Q(drop_sessions__state__gt=SessionState.READY))) \
+            .filter(num_active_sessions__lt=F('number_available_at_start'))
+
+    @transaction.atomic()
+    def claim_random_coin(self, drop_session) -> Optional['mobot_client.models.BonusCoin']:
+        coins_available = self.get_queryset().select_for_update().filter(drop=drop_session.drop)
+        if coins_available.count() > 0:
+            coin = random.choice(list(coins_available))
+            drop_session.bonus_coin_claimed = coin
+            drop_session.state = SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX
+            drop_session.save()
+            return coin
+        else:
+            return None
 
 
 class BonusCoin(models.Model):
@@ -161,6 +179,9 @@ class BonusCoin(models.Model):
     class Meta:
         base_manager_name = 'available'
 
+    def __str__(self):
+        return f"BonusCoin {self.pk} ({self.amount_pmob} PMOB)"
+
     def number_remaining(self) -> int:
         return self.number_available_at_start - self.drop_sessions(manager='active_sessions').count()
 
@@ -169,7 +190,7 @@ class BonusCoin(models.Model):
 
 
 class Customer(models.Model):
-    phone_number = PhoneNumberField(primary_key=True, db_index=True)
+    phone_number = PhoneNumberField(db_index=True)
     received_sticker_pack = models.BooleanField(default=False)
 
     def has_completed_drop(self, drop: Drop) -> bool:
@@ -191,25 +212,14 @@ class CustomerDropRefunds(models.Model):
     number_of_times_refunded = models.PositiveIntegerField(default=0)
 
 
-class DropSessionManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().annotate(
-            active=ExpressionWrapper(
-                Q(state__gt=SessionState.READY),
-                output_field=BooleanField())
-        )
-
-    def under_drop_quota(self, drop: Drop) -> bool:
-        return self.get_queryset().filter(drop=drop).count() < drop.initial_coin_limit
-
-    def active_sessions(self) -> models.QuerySet:
-        self.get_queryset().filter(active=True)
-
-
-class ActiveDropSessionManager(DropSessionManager):
+class ActiveOrCompletedManager(models.Manager):
     def get_queryset(self) -> models.QuerySet:
-        active_sessions = super().get_queryset().filter(state__gt=SessionState.READY)
-        return active_sessions
+        return super().get_queryset().filter(state__gt=SessionState.READY)
+
+
+class ActiveDropSessionManager(ActiveOrCompletedManager):
+    def get_queryset(self) -> models.QuerySet:
+        return super().get_queryset().filter(state__lt=SessionState.COMPLETED)
 
 
 class DropSession(models.Model):
@@ -221,8 +231,9 @@ class DropSession(models.Model):
         BonusCoin, on_delete=models.CASCADE, default=None, blank=True, null=True, related_name="drop_sessions"
     )
 
-    objects = DropSessionManager()
+    objects = models.Manager()
     active_sessions = ActiveDropSessionManager()
+    active_or_completed_sessions = ActiveOrCompletedManager()
 
     class Meta:
         base_manager_name = 'objects'

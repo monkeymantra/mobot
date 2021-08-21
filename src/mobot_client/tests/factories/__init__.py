@@ -102,7 +102,6 @@ class SkuFactory(factory.django.DjangoModelFactory):
     identifier = factory.Faker('pystr')
 
 
-
 class CustomerFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Customer
@@ -132,12 +131,15 @@ class DropSessionFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DropSession
 
-    id = factory.Faker('pyint', max_value=9999999)
     customer = factory.SubFactory(CustomerFactory)
 
     @factory.lazy_attribute
     def drop_id(self):
-        return self.drop.id
+        return self.drop.pk
+
+    @factory.lazy_attribute
+    def customer_id(self):
+        return self.customer.pk
 
 
 class OrderFactory(factory.django.DjangoModelFactory):

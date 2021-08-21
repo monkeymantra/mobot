@@ -28,7 +28,7 @@ class Timeouts:
 
     @staticmethod
     def customer_is_active(customer):
-        session = DropSession.objects.filter(customer=customer).values('state').last()
+        session = DropSession.active_sessions.filter(customer=customer).values('state').last()
         if session is not None and session.state in SessionState.active_states():
             return True
         return False

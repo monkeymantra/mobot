@@ -1,15 +1,16 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
 
 import random
-
 from decimal import Decimal
+
+import mobilecoin as mc
+from django.db import transaction
+
 from mobot_client.drop_session import BaseDropSession
 from mobot_client.models import (
     DropSession, Drop,
     BonusCoin, SessionState, Message, Customer, Payment
 )
-
-import mobilecoin as mc
 from mobot_client.messages.chat_strings import ChatStrings
 from mobot_client.messages.commands import CustomerChatCommands
 
@@ -31,10 +32,12 @@ class AirDropSession(BaseDropSession):
         drop_session = payment.drop_session
         customer = drop_session.customer
         if not self.is_minimum_coin_available(payment.drop_session.drop):
+            self.logger.info("Airdrop sold out!")
             self.log_and_send_message_to_customer(
                 payment.drop_session.customer,
                 ChatStrings.AIRDROP_SOLD_OUT_REFUND.format(amount=payment.amount_in_mob.normalize())
             )
+            self.logger.info(f"Refunding customer {customer} {payment.amount_in_mob} MOB")
             refund_payment = self.payments.send_mob_to_customer(
                 customer=payment.drop_session.customer,
                 amount_mob=payment.amount_in_mob,
@@ -43,13 +46,8 @@ class AirDropSession(BaseDropSession):
                 payment_type=Payment.PaymentType.REFUND,
             )
         else:
-            bonus_coin_objects_for_drop = drop_session.drop.bonus_coins
-            bonus_coins = []
-
-            for bonus_coin in bonus_coin_objects_for_drop:
-                bonus_coins.extend([bonus_coin] * bonus_coin.number_remaining())
-
-            if not bonus_coin_objects_for_drop.count():
+            claimed_coin: BonusCoin = BonusCoin.available.claim_random_coin(drop_session=drop_session)
+            if not claimed_coin:
                 self.log_and_send_message_to_customer(
                     drop_session.customer,
                     ChatStrings.BONUS_SOLD_OUT_REFUND.format(amount=payment.amount_in_mob.normalize())
@@ -62,21 +60,16 @@ class AirDropSession(BaseDropSession):
                     payment_type=Payment.PaymentType.REFUND
                 )
             else:
-                initial_coin_amount_mob = mc.pmob2mob(
-                    drop_session.drop.initial_coin_amount_pmob
-                )
-                random_index = random.randint(0, len(bonus_coins) - 1)
-                amount_in_mob = mc.pmob2mob(bonus_coins[random_index].amount_pmob)
+                initial_coin_amount_mob = mc.pmob2mob(drop_session.drop.initial_coin_amount_pmob)
                 amount_to_send_mob = (
-                        amount_in_mob
+                        mc.pmob2mob(claimed_coin.amount_pmob),
                         + payment.amount_in_mob
                         + mc.pmob2mob(self.payments.get_minimum_fee_pmob())
                 )
                 self.payments.send_mob_to_customer(customer=customer,
                                                    amount_mob=amount_to_send_mob,
                                                    cover_transaction_fee=True)
-                drop_session.bonus_coin_claimed = bonus_coins[random_index]
-                total_prize = Decimal(initial_coin_amount_mob + amount_in_mob)
+                total_prize = Decimal(initial_coin_amount_mob + mc.pmob2mob(claimed_coin.amount_pmob))
                 self.log_and_send_message_to_customer(
                     customer,
                     ChatStrings.REFUND_SENT.format(amount=amount_to_send_mob.normalize(), total_prize=total_prize.normalize())
@@ -88,18 +81,7 @@ class AirDropSession(BaseDropSession):
                     customer,
                     ChatStrings.AIRDROP_COMPLETED
                 )
-
-                # This is an exception-free, django-friendly way of finding out if a customer has store preferences
-                if hasattr(customer, 'customer_store_preferences'):
-                    self.log_and_send_message_to_customer(
-                        customer, ChatStrings.BYE
-                    )
-                    drop_session.state = SessionState.COMPLETED
-                else:
-                    self.log_and_send_message_to_customer(
-                        customer, ChatStrings.NOTIFICATIONS_ASK
-                    )
-                    drop_session.state = SessionState.ALLOW_CONTACT_REQUESTED
+            self.ask_customer_to_allow_contact(drop_session=drop_session)
         drop_session.save()
 
     def handle_drop_session_waiting_for_bonus_transaction(self, message, drop_session):
@@ -134,7 +116,6 @@ class AirDropSession(BaseDropSession):
             ChatStrings.AIRDROP_OVER
         )
         drop_session.state = SessionState.COMPLETED
-
 
     def handle_drop_session_ready_to_receive(self, message, drop_session: DropSession):
         command = CustomerChatCommands[message.text]
@@ -178,7 +159,6 @@ class AirDropSession(BaseDropSession):
         drop_session.save()
 
     def handle_active_airdrop_drop_session(self, message, drop_session):
-        # TODO @Greg: Replace with signal/handler pattern for each state
         if drop_session.state == SessionState.READY:
             self.handle_drop_session_ready_to_receive(message, drop_session)
         elif drop_session.state == SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX:

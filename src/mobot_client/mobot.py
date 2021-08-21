@@ -89,7 +89,6 @@ class MOBot:
         # Chat handlers defined in __init__ so they can be registered with the Signal instance
         @self.signal.payment_handler
         def handle_payment(source, receipt):
-            receipt_status = None
             customer, _ = Customer.objects.get_or_create(phone_number=source)
 
             if isinstance(source, dict):
@@ -205,20 +204,13 @@ class MOBot:
                 phone_number=message.source["number"]
             )
             self.messenger.log_received(message, customer, self.store)
-                # TODO: @Greg Replace with Custom Manager/QuerySets
-            active_drop_session = DropSession.objects.get(
-                customer=customer,
-                drop__drop_type=DropType.AIRDROP,
-                state__gte=SessionState.READY,
-                state__lt=SessionState.COMPLETED,
-            )
+            active_drop_session = customer.drop_sessions(manager='active_sessions')
 
             if active_drop_session:
                 self.logger.info(f"found active drop session in state {active_drop_session.state}")
 
                 if not active_drop_session.manual_override:
                     air_drop = AirDropSession(self.store, self.payments, self.messenger)
-
                     air_drop.handle_active_airdrop_drop_session(
                         message, active_drop_session
                     )
@@ -226,8 +218,8 @@ class MOBot:
                 active_drop_session = DropSession.objects.filter(
                     customer=customer,
                     drop__drop_type=DropType.ITEM,
-                    state__gte=ItemSessionState.WAITING_FOR_PAYMENT,
-                    state__lt=ItemSessionState.COMPLETED,
+                    state__gte=SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX,
+                    state__lt=SessionState.COMPLETED,
                 ).first()
                 if active_drop_session:
                     self.logger.info(f"found active drop session in state {active_drop_session.state}")

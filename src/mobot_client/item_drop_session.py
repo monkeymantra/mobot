@@ -328,17 +328,7 @@ class ItemDropSession(BaseDropSession):
         else:
             order.status = OrderStatus.CONFIRMED
             self.send_order_confirmation(order)
-
-            if drop_session.customer.customer_store_preferences.filter(store=drop_session.drop.store).first():
-                drop_session.state = SessionState.COMPLETED
-                self.log_and_send_message_to_customer(
-                    drop_session.customer, ChatStrings.BYE
-                )
-            else:
-                drop_session.state = SessionState.ALLOW_CONTACT_REQUESTED
-                self.log_and_send_message_to_customer(
-                    drop_session.customer, message.source, ChatStrings.FUTURE_NOTIFICATIONS
-                )
+            self.ask_customer_to_allow_contact(drop_session=drop_session)
         order.save()
         drop_session.save()
 

@@ -1,10 +1,12 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
 from typing import List, Dict
 from collections import defaultdict
+import unittest
 
 from django.test import TestCase
 import factory.random
 from mobot_client.tests.factories import *
+
 from django.db import transaction
 import random
 
@@ -25,26 +27,6 @@ from mobot_client.models.states import SessionState
 
 class ModelTests(TestCase):
 
-    def make_session(self, customer: Customer, drop: Drop, bonus_coin: BonusCoin = None, state=None, num=1):
-        bonus_coin = BonusCoin.objects.create(
-            drop=drop,
-            amount_pmob=10 * 1e12,
-            number_available=10
-        )
-        for _ in range(num):
-            yield DropSession.objects.create(
-                customer=customer,
-                drop=drop,
-                bonus_coin_claimed=bonus_coin)
-
-    def setUp(self):
-        with transaction.atomic():
-            Store.objects.all().delete()
-            Drop.objects.all().delete()
-            DropSession.objects.all().delete()
-
-    def tearDown(self) -> None:
-        pass
 
     def test_items_available(self):
         store = StoreFactory.create()
@@ -100,25 +82,25 @@ class ModelTests(TestCase):
         print(f"Asserting {sku_to_sell_out} no longer in stock...")
         self.assertFalse(sku_to_sell_out.in_stock())
 
-
     def test_airdrop_inventory(self):
-        store = StoreFactory.create()
-        drop = DropFactory.create(drop_type=DropType.AIRDROP, store=store)
-        bonus_coin_1, bonus_coin_2, bonus_coin_3 = list(BonusCoinFactory.create_batch(size=3, drop=drop))
-        sessions_by_coin = defaultdict(list)
-        for session_id in range(10):
-            session = DropSessionFactory.create(id=session_id, drop=drop, bonus_coin_claimed=random.choice([
-                bonus_coin_1, bonus_coin_2, bonus_coin_3]), state=SessionState.READY)
-            sessions_by_coin[session.bonus_coin_claimed].append(session)
-        print(sessions_by_coin)
+        drop = DropFactory.create(drop_type=DropType.AIRDROP)
+        print("Minting 3 BonusCoins")
+        BonusCoinFactory.create_batch(size=3, drop=drop)
+        sessions_by_coin: Dict[BonusCoin, List[DropSession]] = defaultdict(list)
+        sessions = DropSessionFactory.create_batch(size=10, drop=drop)
+
+        for session in sessions:
+            coin = BonusCoin.available.claim_random_coin(session)
+            print(f"Session {session.id} claimed coin {coin}")
+            sessions_by_coin[coin].append(session)
 
         for coin, sessions in sessions_by_coin.items():
-            print(f"Asserting all coins still available for {coin}...")
-            self.assertEqual(coin.number_remaining(), coin.number_available_at_start)
-            for session in sessions:
-                session.state = SessionState.WAITING_FOR_PAYMENT_OR_BONUS_TX
-                session.save()
+            print(f"Ensuring coin {coin.id} has been updated to show new availability...")
+            print(f"Number of sessions claiming coin: {len(sessions)} Number available: {coin.number_remaining()}")
             self.assertEqual(coin.number_remaining(), coin.number_available_at_start - len(sessions))
-            print(f"{coin.number_remaining} out of the original {coin.number_available_at_start}")
-            self.assertEqual(coin.number_claimed(), len(sessions))
-            print(f"Number claimed matches number of active sessions.")
+
+        print("Making many sessions, clearing out inventory")
+        more_sessions = DropSessionFactory.create_batch(size=100, drop=drop)
+
+
+

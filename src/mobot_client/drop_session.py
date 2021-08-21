@@ -1,5 +1,5 @@
 # Copyright (c) 2021 MobileCoin. All rights reserved.
-
+import logging
 from typing import Optional
 
 from decimal import Decimal
@@ -22,6 +22,7 @@ class BaseDropSession:
         self.payments = payments
         self.messenger = messenger
         self.customer: Customer = customer
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     @staticmethod
     def get_advertising_drop() -> Optional[Drop]:
@@ -95,3 +96,17 @@ class BaseDropSession:
         customer_store_preferences, _ = customer.customer_store_preferences.get_or_create(store=drop_session.store)
         customer_store_preferences.allows_contact = allows_contact
         customer_store_preferences.save()
+
+    def ask_customer_to_allow_contact(self, drop_session: DropSession):
+        if hasattr(drop_session.customer, 'customer_store_preferences'):
+            if drop_session.customer.customer_store_preferences.filter(store=drop_session.drop.store).first():
+                drop_session.state = SessionState.COMPLETED
+                self.log_and_send_message_to_customer(
+                    drop_session.customer, ChatStrings.BYE
+                )
+            else:
+                drop_session.state = SessionState.ALLOW_CONTACT_REQUESTED
+                self.log_and_send_message_to_customer(
+                    drop_session.customer, ChatStrings.FUTURE_NOTIFICATIONS
+                )
+            drop_session.save()
