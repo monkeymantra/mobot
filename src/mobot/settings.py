@@ -46,10 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
-<<<<<<< HEAD:src/admin/settings.py
     'phonenumber_field',
-=======
->>>>>>> origin/main:src/mobot/settings.py
     'mobot_client.apps.MobotClientConfig'
 ]
 

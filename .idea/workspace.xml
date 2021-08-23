@@ -2,8 +2,35 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="fe3c705e-48e5-4566-b863-2c2e778ef483" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/mobot_client/tests/drop_session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/models/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/install_hooks.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/pre-commit-check-copyright.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/mobot_client/chat_strings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TERMS-OF-USE.md" beforeDir="false" afterPath="$PROJECT_DIR$/TERMS-OF-USE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobot/mobot/asgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/mobot/mobot/asgi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobot/mobot/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/mobot/mobot/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobot/mobot/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/mobot/mobot/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mobot/mobot/wsgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/mobot/mobot/wsgi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/admin/asgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/admin/asgi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/admin/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/admin/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/admin/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/admin/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/admin/wsgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/admin/wsgi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot/asgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot/asgi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot/wsgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot/wsgi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/air_drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/air_drop_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/drop_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/item_drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/item_drop_session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/logger.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/logger.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0001_initial.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/mobot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/mobot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/payments.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/payments.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mobot_client/tests.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/tests.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/timeouts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/timeouts.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -13,6 +40,13 @@
   </component>
   <component name="DjangoConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)">
     <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Unit Test" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
