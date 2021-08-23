@@ -2,29 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="fe3c705e-48e5-4566-b863-2c2e778ef483" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/air_drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/air_drop_session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/drop_session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/item_drop_session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/item_drop_session.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0001_initial.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0002_auto_20210608_1945.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0003_dropsession_bonus_coin_claimed.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0004_remove_bonuscoin_number_claimed.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0005_chatbotsettings.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0006_auto_20210611_1954.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0007_auto_20210611_1955.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0008_auto_20210729_2100.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0009_sku_sort_order.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0010_auto_20210805_1824.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0011_auto_20210805_1947.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0012_drop_country_long_name_restriction.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0013_auto_20210819_1901.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0014_auto_20210820_2003.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/migrations/0015_auto_20210820_2005.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/mobot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/mobot.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/mobot_client/tests/drop_session.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/tests/factories/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/tests/factories/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mobot_client/tests/model_tests.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/tests/model_tests.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mobot_client/timeouts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/mobot_client/timeouts.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

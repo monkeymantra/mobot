@@ -222,6 +222,11 @@ class ActiveDropSessionManager(ActiveOrCompletedManager):
         return super().get_queryset().filter(state__lt=SessionState.COMPLETED)
 
 
+class RefundableDropSessionManager(models.Manager):
+    def get_queryset(self) -> models.QuerySet:
+        return super().get_queryset().filter(state__in=SessionState.refundable_states)
+
+
 class DropSession(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="drop_sessions")
     drop = models.ForeignKey(Drop, on_delete=models.CASCADE, related_name="drop_sessions")
@@ -230,13 +235,11 @@ class DropSession(models.Model):
     bonus_coin_claimed = models.ForeignKey(
         BonusCoin, on_delete=models.CASCADE, default=None, blank=True, null=True, related_name="drop_sessions"
     )
-
+    ## Managers to find sessions at different states
     objects = models.Manager()
     active_sessions = ActiveDropSessionManager()
     active_or_completed_sessions = ActiveOrCompletedManager()
-
-    class Meta:
-        base_manager_name = 'objects'
+    refundable_sessions = RefundableDropSessionManager()
 
     def under_quota(self) -> bool:
         return self.bonus_coin_claimed.number_remaining() > 0
